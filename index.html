@@ -147,6 +147,13 @@
             <select id="task-lane" name="lane" required></select>
           </label>
           <label>Description <textarea id="task-description" name="description" rows="4"></textarea></label>
+          <label>Description display
+            <select id="task-description-position" name="descriptionPosition">
+              <option value="hidden">Hidden</option>
+              <option value="above">Above</option>
+              <option value="below">Below</option>
+            </select>
+          </label>
         </div>
         <p id="task-form-error" class="form-error" role="alert" hidden></p>
         <div class="manager-actions">
@@ -189,9 +196,16 @@
     ];
 
     const TASK_STATUSES = ["planned", "in_progress", "done", "blocked"];
+    const DESCRIPTION_POSITIONS = ["hidden", "above", "below"];
     const DEFAULT_TASK_COLOR = "#2563eb";
     const colorForTask = task =>
       /^#[0-9a-f]{6}$/i.test(task.color || "") ? task.color : DEFAULT_TASK_COLOR;
+    const descriptionPositionForTask = task =>
+      DESCRIPTION_POSITIONS.includes(task.descriptionPosition) ? task.descriptionPosition : "hidden";
+    const escapeAnnotationText = text => text
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
 
     const taskRowStart = 2.75;
 
@@ -305,6 +319,25 @@
       }));
       const regularTasks = tasksWithRows.filter(({ task }) => task.start !== task.end);
       const milestones = tasksWithRows.filter(({ task }) => task.start === task.end);
+      const descriptionAnnotations = tasksWithRows.flatMap(({ task, rowPosition }) => {
+        const descriptionPosition = descriptionPositionForTask(task);
+        const description = String(task.description || "").trim();
+        if (descriptionPosition === "hidden" || !description) return [];
+        const startTime = Date.parse(task.start);
+        const endTime = Date.parse(task.end);
+        return [{
+          x: new Date(startTime + (endTime - startTime) / 2).toISOString(),
+          y: rowPosition,
+          xref: "x",
+          yref: "y",
+          text: escapeAnnotationText(description),
+          showarrow: false,
+          xanchor: "center",
+          yanchor: descriptionPosition === "above" ? "bottom" : "top",
+          yshift: descriptionPosition === "above" ? 18 : -18,
+          align: "center"
+        }];
+      });
       const taskTraces = [
         ...(regularTasks.length ? [{
           type: "bar",
@@ -368,6 +401,7 @@
         barmode: "overlay",
         showlegend: false,
         shapes: [...alignmentGridlines, todayLine],
+        annotations: descriptionAnnotations,
         xaxis: {
           type: "date",
           title: "Date",
@@ -889,6 +923,7 @@
     const taskColor = document.getElementById("task-color");
     const taskLane = document.getElementById("task-lane");
     const taskDescription = document.getElementById("task-description");
+    const taskDescriptionPosition = document.getElementById("task-description-position");
     const taskFormError = document.getElementById("task-form-error");
     const saveTask = document.getElementById("save-task");
     let editingTaskIndex = null;
@@ -941,6 +976,7 @@
         taskOwner.value = task.owner || "";
         taskColor.value = task.color || DEFAULT_TASK_COLOR;
         taskDescription.value = task.description || "";
+        taskDescriptionPosition.value = descriptionPositionForTask(task);
         saveTask.textContent = "Save changes";
       }
 
@@ -996,6 +1032,7 @@
       const color = taskColor.value;
       const lane = taskLane.value;
       const description = taskDescription.value.trim();
+      const descriptionPosition = taskDescriptionPosition.value;
 
       if (!name) {
         taskFormError.textContent = "Name is required.";
@@ -1028,7 +1065,13 @@
         taskLane.focus();
         return;
       }
-      const task = { name, start, end, status, lane, color };
+      if (!DESCRIPTION_POSITIONS.includes(descriptionPosition)) {
+        taskFormError.textContent = "Select a description display position.";
+        taskFormError.hidden = false;
+        taskDescriptionPosition.focus();
+        return;
+      }
+      const task = { name, start, end, status, lane, color, descriptionPosition };
       if (owner) task.owner = owner;
       if (description) task.description = description;
       if (editingTaskIndex === null) {
