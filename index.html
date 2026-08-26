@@ -37,7 +37,7 @@
       orientation: "h",
       x: PROGRAM_INCREMENTS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
       base: PROGRAM_INCREMENTS.map(({ start }) => start),
-      y: PROGRAM_INCREMENTS.map(() => "Program Increments"),
+      y: PROGRAM_INCREMENTS.map(() => 0),
       text: PROGRAM_INCREMENTS.map(({ name }) => name),
       textposition: "inside",
       insidetextanchor: "middle",
@@ -53,7 +53,7 @@
       orientation: "h",
       x: SPRINTS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
       base: SPRINTS.map(({ start }) => start),
-      y: SPRINTS.map(() => "Sprints"),
+      y: SPRINTS.map(() => 1),
       text: SPRINTS.map(({ name }) => name),
       textposition: "inside",
       insidetextanchor: "middle",
@@ -62,6 +62,29 @@
       marker: { color: "#93c5fd" },
       width: 0.45,
       name: "Sprints"
+    };
+
+    const taskRowStart = 2.75;
+    const taskRowPositions = TASKS.map((_, index) => taskRowStart + index);
+
+    const taskTrace = {
+      type: "bar",
+      orientation: "h",
+      x: TASKS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
+      base: TASKS.map(({ start }) => start),
+      y: taskRowPositions,
+      customdata: TASKS.map(({ name, start, end, status, owner }) =>
+        [name, start, end, status, owner]
+      ),
+      hovertemplate: TASKS.map(({ owner }) =>
+        "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
+        "<br>Status: %{customdata[3]}" +
+        (owner ? "<br>Owner: %{customdata[4]}" : "") +
+        "<extra></extra>"
+      ),
+      marker: { color: "#475569" },
+      width: 0.6,
+      name: "Tasks"
     };
 
     const boundaryShapes = (items, line) => items.flatMap(({ start, end }) =>
@@ -84,7 +107,7 @@
 
     Plotly.newPlot(
       "roadmap-chart",
-      [programIncrementTrace, sprintTrace],
+      [programIncrementTrace, sprintTrace, taskTrace],
       {
         title: "Product Roadmap",
         barmode: "overlay",
@@ -94,9 +117,10 @@
           title: "Date"
         },
         yaxis: {
-          categoryorder: "array",
-          categoryarray: ["Program Increments", "Sprints"],
-          autorange: "reversed",
+          tickmode: "array",
+          tickvals: [0, 1, ...taskRowPositions],
+          ticktext: ["Program Increments", "Sprints", ...TASKS.map(({ name }) => name)],
+          range: [taskRowStart + TASKS.length - 0.4, -0.6],
           automargin: true
         }
       },
