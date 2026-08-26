@@ -32,18 +32,39 @@
       { name: "Prepare pilot", start: "2025-02-17", end: "2025-03-07", status: "Planned", owner: "Maya" }
     ];
 
-    const placeholderTrace = {
-      x: [1, 2, 3],
-      y: [1, 3, 2],
-      mode: "lines+markers",
-      type: "scatter",
-      name: "Rendering check"
+    const programIncrementTrace = {
+      type: "bar",
+      orientation: "h",
+      x: PROGRAM_INCREMENTS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
+      base: PROGRAM_INCREMENTS.map(({ start }) => start),
+      y: PROGRAM_INCREMENTS.map(() => "Program Increments"),
+      text: PROGRAM_INCREMENTS.map(({ name }) => name),
+      textposition: "inside",
+      insidetextanchor: "middle",
+      customdata: PROGRAM_INCREMENTS.map(({ start, end }) => [start, end]),
+      hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
+      marker: { color: "#2563eb" },
+      width: 0.7,
+      name: "Program Increments"
     };
 
     Plotly.newPlot(
       "roadmap-chart",
-      [placeholderTrace],
-      { title: "Plotly rendering proof of life" },
+      [programIncrementTrace],
+      {
+        title: "Product Roadmap",
+        barmode: "overlay",
+        xaxis: {
+          type: "date",
+          title: "Date"
+        },
+        yaxis: {
+          categoryorder: "array",
+          categoryarray: ["Program Increments"],
+          autorange: "reversed",
+          automargin: true
+        }
+      },
       { responsive: true }
     );
   </script>
