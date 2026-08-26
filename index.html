@@ -10,6 +10,8 @@
     main { margin: 0 auto; max-width: 1200px; padding: 1rem; }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
+    .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+    .view-toggle button[aria-pressed="true"] { background: #2563eb; color: white; }
     .roadmap-manager { border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 1rem; padding: 1rem; }
     .roadmap-manager h2 { display: inline-block; font-size: 1.2rem; margin: 0 1rem 0 0; }
     .manager-list { list-style: none; margin: 1rem 0 0; padding: 0; }
@@ -27,17 +29,25 @@
 <body>
   <main>
     <h1>Vizimap</h1>
-    <label for="tick-mode">Timeline labels:</label>
-    <select id="tick-mode">
-      <option value="calendar" selected>Calendar</option>
-      <option value="sprint">Sprint</option>
-      <option value="pi">PI</option>
-    </select>
-    <button id="open-roadmap" type="button">Open Roadmap</button>
-    <button id="save-roadmap" type="button">Save</button>
-    <button id="export-png" type="button">Export PNG</button>
-    <p id="file-status" role="status" aria-live="polite"></p>
-    <section class="roadmap-manager" aria-labelledby="pi-manager-title">
+    <nav class="view-toggle" aria-label="Roadmap view">
+      <button id="show-chart" type="button" aria-pressed="true" aria-controls="chart-view">Chart</button>
+      <button id="show-configure" type="button" aria-pressed="false" aria-controls="configure-view">Configure</button>
+    </nav>
+    <section id="chart-view" aria-label="Chart view">
+      <label for="tick-mode">Timeline labels:</label>
+      <select id="tick-mode">
+        <option value="calendar" selected>Calendar</option>
+        <option value="sprint">Sprint</option>
+        <option value="pi">PI</option>
+      </select>
+      <button id="export-png" type="button">Export PNG</button>
+      <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
+    </section>
+    <section id="configure-view" aria-label="Configure view" hidden>
+      <button id="open-roadmap" type="button">Open Roadmap</button>
+      <button id="save-roadmap" type="button">Save</button>
+      <p id="file-status" role="status" aria-live="polite"></p>
+      <section class="roadmap-manager" aria-labelledby="pi-manager-title">
       <h2 id="pi-manager-title">Program Increments</h2>
       <button id="add-pi" type="button">Add PI</button>
       <div id="pi-delete-warning" class="delete-warning" role="alert" hidden></div>
@@ -54,8 +64,8 @@
         </div>
       </form>
       <ul id="pi-list" class="manager-list"></ul>
-    </section>
-    <section class="roadmap-manager" aria-labelledby="sprint-manager-title">
+      </section>
+      <section class="roadmap-manager" aria-labelledby="sprint-manager-title">
       <h2 id="sprint-manager-title">Sprints</h2>
       <button id="add-sprint" type="button">Add Sprint</button>
       <form id="sprint-editor" class="manager-editor" hidden novalidate>
@@ -74,8 +84,8 @@
         </div>
       </form>
       <ul id="sprint-list" class="manager-list"></ul>
-    </section>
-    <section class="roadmap-manager" aria-labelledby="lane-manager-title">
+      </section>
+      <section class="roadmap-manager" aria-labelledby="lane-manager-title">
       <h2 id="lane-manager-title">Lanes</h2>
       <button id="add-lane" type="button">Add Lane</button>
       <div id="lane-delete-warning" class="delete-warning" role="alert" hidden></div>
@@ -90,8 +100,8 @@
         </div>
       </form>
       <ul id="lane-list" class="manager-list"></ul>
-    </section>
-    <section class="roadmap-manager" aria-labelledby="task-manager-title">
+      </section>
+      <section class="roadmap-manager" aria-labelledby="task-manager-title">
       <h2 id="task-manager-title">Tasks</h2>
       <button id="add-task" type="button">Add Task</button>
       <form id="task-editor" class="manager-editor" hidden novalidate>
@@ -115,8 +125,8 @@
         </div>
       </form>
       <ul id="task-list" class="manager-list"></ul>
+      </section>
     </section>
-    <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
   </main>
 
   <script>
@@ -198,6 +208,23 @@
 
     const chart = document.getElementById("roadmap-chart");
     let chartReady;
+
+    const chartView = document.getElementById("chart-view");
+    const configureView = document.getElementById("configure-view");
+    const showChart = document.getElementById("show-chart");
+    const showConfigure = document.getElementById("show-configure");
+
+    const setView = view => {
+      const chartIsActive = view === "chart";
+      chartView.hidden = !chartIsActive;
+      configureView.hidden = chartIsActive;
+      showChart.setAttribute("aria-pressed", chartIsActive);
+      showConfigure.setAttribute("aria-pressed", !chartIsActive);
+      if (chartIsActive && chartReady) chartReady.then(() => Plotly.Plots.resize(chart));
+    };
+
+    showChart.addEventListener("click", () => setView("chart"));
+    showConfigure.addEventListener("click", () => setView("configure"));
 
     const renderChart = () => {
       const laneRowPositions = new Map(
