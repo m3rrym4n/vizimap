@@ -75,6 +75,22 @@
       </form>
       <ul id="sprint-list" class="manager-list"></ul>
     </section>
+    <section class="roadmap-manager" aria-labelledby="lane-manager-title">
+      <h2 id="lane-manager-title">Lanes</h2>
+      <button id="add-lane" type="button">Add Lane</button>
+      <div id="lane-delete-warning" class="delete-warning" role="alert" hidden></div>
+      <form id="lane-editor" class="manager-editor" hidden novalidate>
+        <div class="manager-fields">
+          <label>Name <input id="lane-name" name="name" type="text" required></label>
+        </div>
+        <p id="lane-form-error" class="form-error" role="alert" hidden></p>
+        <div class="manager-actions">
+          <button id="save-lane" type="submit">Add Lane</button>
+          <button id="cancel-lane" type="button">Cancel</button>
+        </div>
+      </form>
+      <ul id="lane-list" class="manager-list"></ul>
+    </section>
     <section class="roadmap-manager" aria-labelledby="task-manager-title">
       <h2 id="task-manager-title">Tasks</h2>
       <button id="add-task" type="button">Add Task</button>
@@ -628,6 +644,163 @@
 
     renderSprintList();
 
+    const laneList = document.getElementById("lane-list");
+    const laneEditor = document.getElementById("lane-editor");
+    const laneName = document.getElementById("lane-name");
+    const laneFormError = document.getElementById("lane-form-error");
+    const laneDeleteWarning = document.getElementById("lane-delete-warning");
+    const saveLane = document.getElementById("save-lane");
+    let editingLaneIndex = null;
+
+    const hideLaneDeleteWarning = () => {
+      laneDeleteWarning.hidden = true;
+      laneDeleteWarning.replaceChildren();
+    };
+
+    const closeLaneEditor = () => {
+      editingLaneIndex = null;
+      laneEditor.reset();
+      laneEditor.hidden = true;
+      laneFormError.hidden = true;
+    };
+
+    const openLaneEditor = index => {
+      hideLaneDeleteWarning();
+      editingLaneIndex = index;
+      laneEditor.reset();
+      laneFormError.hidden = true;
+
+      if (index === null) {
+        saveLane.textContent = "Add Lane";
+      } else {
+        laneName.value = LANES[index].name;
+        saveLane.textContent = "Save changes";
+      }
+
+      laneEditor.hidden = false;
+      laneName.focus();
+    };
+
+    const deleteLane = async index => {
+      LANES.splice(index, 1);
+      closeLaneEditor();
+      hideLaneDeleteWarning();
+      renderLaneList();
+      await refreshRoadmap();
+    };
+
+    const requestLaneDelete = index => {
+      closeLaneEditor();
+      hideLaneDeleteWarning();
+      const lane = LANES[index];
+      const referencedTasks = TASKS.filter(task => task.lane === lane.name);
+
+      if (!referencedTasks.length) {
+        deleteLane(index);
+        return;
+      }
+
+      const message = document.createElement("p");
+      const taskNames = referencedTasks.map(({ name }) => name).join(", ");
+      message.textContent = `Cannot safely delete ${lane.name}: ${referencedTasks.length} task${referencedTasks.length === 1 ? "" : "s"} reference it (${taskNames}). Deleting it will leave those references orphaned.`;
+      const confirmDelete = document.createElement("button");
+      confirmDelete.type = "button";
+      confirmDelete.textContent = "Delete Lane anyway";
+      confirmDelete.addEventListener("click", () => deleteLane(index));
+      const cancelDelete = document.createElement("button");
+      cancelDelete.type = "button";
+      cancelDelete.textContent = "Cancel";
+      cancelDelete.addEventListener("click", hideLaneDeleteWarning);
+      laneDeleteWarning.append(message, confirmDelete, " ", cancelDelete);
+      laneDeleteWarning.hidden = false;
+      laneDeleteWarning.scrollIntoView({ block: "nearest" });
+    };
+
+    const moveLane = async (index, offset) => {
+      const destination = index + offset;
+      if (destination < 0 || destination >= LANES.length) return;
+      [LANES[index], LANES[destination]] = [LANES[destination], LANES[index]];
+      closeLaneEditor();
+      hideLaneDeleteWarning();
+      renderLaneList();
+      await refreshRoadmap();
+    };
+
+    const renderLaneList = () => {
+      laneList.replaceChildren();
+      LANES.forEach((lane, index) => {
+        const item = document.createElement("li");
+        const details = document.createElement("span");
+        details.className = "manager-details";
+        details.textContent = lane.name;
+        const moveUp = document.createElement("button");
+        moveUp.type = "button";
+        moveUp.textContent = "Move up";
+        moveUp.disabled = index === 0;
+        moveUp.setAttribute("aria-label", `Move ${lane.name} up`);
+        moveUp.addEventListener("click", () => moveLane(index, -1));
+        const moveDown = document.createElement("button");
+        moveDown.type = "button";
+        moveDown.textContent = "Move down";
+        moveDown.disabled = index === LANES.length - 1;
+        moveDown.setAttribute("aria-label", `Move ${lane.name} down`);
+        moveDown.addEventListener("click", () => moveLane(index, 1));
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.textContent = "Edit";
+        edit.setAttribute("aria-label", `Edit ${lane.name}`);
+        edit.addEventListener("click", () => openLaneEditor(index));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Delete";
+        remove.setAttribute("aria-label", `Delete ${lane.name}`);
+        remove.addEventListener("click", () => requestLaneDelete(index));
+        item.append(details, moveUp, moveDown, edit, remove);
+        laneList.append(item);
+      });
+
+      if (!LANES.length) {
+        const empty = document.createElement("li");
+        empty.textContent = "No Lanes yet.";
+        laneList.append(empty);
+      }
+    };
+
+    document.getElementById("add-lane").addEventListener("click", () => openLaneEditor(null));
+    document.getElementById("cancel-lane").addEventListener("click", closeLaneEditor);
+    laneEditor.addEventListener("submit", async event => {
+      event.preventDefault();
+      const name = laneName.value.trim();
+
+      if (!name) {
+        laneFormError.textContent = "Name is required.";
+        laneFormError.hidden = false;
+        laneName.focus();
+        return;
+      }
+      if (LANES.some((lane, index) => lane.name === name && index !== editingLaneIndex)) {
+        laneFormError.textContent = "Lane name must be unique.";
+        laneFormError.hidden = false;
+        laneName.focus();
+        return;
+      }
+
+      if (editingLaneIndex === null) {
+        LANES.push({ name });
+      } else {
+        const previousName = LANES[editingLaneIndex].name;
+        LANES[editingLaneIndex] = { name };
+        TASKS.forEach(task => {
+          if (task.lane === previousName) task.lane = name;
+        });
+      }
+      closeLaneEditor();
+      renderLaneList();
+      await refreshRoadmap();
+    });
+
+    renderLaneList();
+
     const taskList = document.getElementById("task-list");
     const taskEditor = document.getElementById("task-editor");
     const taskName = document.getElementById("task-name");
@@ -818,10 +991,13 @@
         roadmapFileHandle = fileHandle;
         closePiEditor();
         closeSprintEditor();
+        closeLaneEditor();
         closeTaskEditor();
         hideDeleteWarning();
+        hideLaneDeleteWarning();
         renderPiList();
         renderSprintList();
+        renderLaneList();
         renderTaskList();
         await refreshRoadmap();
         fileStatus.textContent = `Opened ${file.name}`;
