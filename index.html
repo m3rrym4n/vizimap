@@ -8,7 +8,7 @@
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; color: #172033; }
     main { margin: 0 auto; max-width: 1200px; padding: 1rem; }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
     .roadmap-manager { border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 1rem; padding: 1rem; }
     .roadmap-manager h2 { display: inline-block; font-size: 1.2rem; margin: 0 1rem 0 0; }
@@ -103,6 +103,10 @@
             <select id="task-status" name="status" required></select>
           </label>
           <label>Owner <input id="task-owner" name="owner" type="text"></label>
+          <label>Lane
+            <select id="task-lane" name="lane" required></select>
+          </label>
+          <label>Description <textarea id="task-description" name="description" rows="4"></textarea></label>
         </div>
         <p id="task-form-error" class="form-error" role="alert" hidden></p>
         <div class="manager-actions">
@@ -808,6 +812,8 @@
     const taskEnd = document.getElementById("task-end");
     const taskStatus = document.getElementById("task-status");
     const taskOwner = document.getElementById("task-owner");
+    const taskLane = document.getElementById("task-lane");
+    const taskDescription = document.getElementById("task-description");
     const taskFormError = document.getElementById("task-form-error");
     const saveTask = document.getElementById("save-task");
     let editingTaskIndex = null;
@@ -818,6 +824,22 @@
       option.textContent = statusLabel(status);
       taskStatus.append(option);
     });
+
+    const populateLaneOptions = selectedLaneName => {
+      taskLane.replaceChildren();
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = LANES.length ? "Select a Lane" : "No Lanes available";
+      taskLane.append(placeholder);
+
+      LANES.forEach(({ name }) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        option.selected = name === selectedLaneName;
+        taskLane.append(option);
+      });
+    };
 
     const closeTaskEditor = () => {
       editingTaskIndex = null;
@@ -830,16 +852,18 @@
       editingTaskIndex = index;
       taskEditor.reset();
       taskFormError.hidden = true;
+      const task = index === null ? null : TASKS[index];
+      populateLaneOptions(task?.lane);
 
       if (index === null) {
         saveTask.textContent = "Add Task";
       } else {
-        const task = TASKS[index];
         taskName.value = task.name;
         taskStart.value = task.start;
         taskEnd.value = task.end;
         taskStatus.value = normalizeStatus(task.status);
         taskOwner.value = task.owner || "";
+        taskDescription.value = task.description || "";
         saveTask.textContent = "Save changes";
       }
 
@@ -892,6 +916,8 @@
       const end = taskEnd.value;
       const status = taskStatus.value;
       const owner = taskOwner.value.trim();
+      const lane = taskLane.value;
+      const description = taskDescription.value.trim();
 
       if (!name) {
         taskFormError.textContent = "Name is required.";
@@ -918,14 +944,15 @@
         return;
       }
 
-      const lane = editingTaskIndex === null ? LANES[0]?.name : TASKS[editingTaskIndex].lane;
-      if (!lane) {
-        taskFormError.textContent = "A lane is required. Open a roadmap with at least one lane.";
+      if (!LANES.some(({ name: laneNameOption }) => laneNameOption === lane)) {
+        taskFormError.textContent = "Select a lane from the current Lanes.";
         taskFormError.hidden = false;
+        taskLane.focus();
         return;
       }
       const task = { name, start, end, status, lane };
       if (owner) task.owner = owner;
+      if (description) task.description = description;
       if (editingTaskIndex === null) {
         TASKS.push(task);
       } else {
