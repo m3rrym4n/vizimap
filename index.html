@@ -135,17 +135,35 @@
       ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
     ];
 
+    const today = new Date();
+    const todayLine = {
+      type: "line",
+      xref: "x",
+      yref: "paper",
+      x0: today,
+      x1: today,
+      y0: 0,
+      y1: 1,
+      line: { color: "#e11d48", width: 3, dash: "solid" },
+      label: {
+        text: "Today",
+        textposition: "top right",
+        font: { color: "#e11d48" }
+      }
+    };
+
     Plotly.newPlot(
       "roadmap-chart",
       [programIncrementTrace, sprintTrace, ...taskTraces],
       {
         title: "Product Roadmap",
         barmode: "overlay",
-        shapes: alignmentGridlines,
+        shapes: [...alignmentGridlines, todayLine],
         legend: { title: { text: "Task status" } },
         xaxis: {
           type: "date",
-          title: "Date"
+          title: "Date",
+          rangeslider: { visible: true }
         },
         yaxis: {
           tickmode: "array",
