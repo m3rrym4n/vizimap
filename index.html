@@ -10,16 +10,16 @@
     main { margin: 0 auto; max-width: 1200px; padding: 1rem; }
     button, input, select { font: inherit; }
     button { cursor: pointer; }
-    .pi-manager { border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 1rem; padding: 1rem; }
-    .pi-manager h2 { display: inline-block; font-size: 1.2rem; margin: 0 1rem 0 0; }
-    .pi-list { list-style: none; margin: 1rem 0 0; padding: 0; }
-    .pi-list li { align-items: center; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; padding: 0.65rem 0; }
-    .pi-details { flex: 1; }
-    .pi-editor { background: #f8fafc; border-radius: 0.4rem; margin-top: 1rem; padding: 1rem; }
-    .pi-editor[hidden] { display: none; }
-    .pi-fields { display: flex; flex-wrap: wrap; gap: 0.75rem; }
-    .pi-fields label { display: grid; gap: 0.25rem; }
-    .pi-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .roadmap-manager { border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 1rem; padding: 1rem; }
+    .roadmap-manager h2 { display: inline-block; font-size: 1.2rem; margin: 0 1rem 0 0; }
+    .manager-list { list-style: none; margin: 1rem 0 0; padding: 0; }
+    .manager-list li { align-items: center; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; padding: 0.65rem 0; }
+    .manager-details { flex: 1; }
+    .manager-editor { background: #f8fafc; border-radius: 0.4rem; margin-top: 1rem; padding: 1rem; }
+    .manager-editor[hidden] { display: none; }
+    .manager-fields { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .manager-fields label { display: grid; gap: 0.25rem; }
+    .manager-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
     .form-error, .delete-warning { color: #b91c1c; }
     .delete-warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.4rem; margin-top: 1rem; padding: 0.75rem; }
   </style>
@@ -37,23 +37,43 @@
     <button id="save-roadmap" type="button">Save</button>
     <button id="export-png" type="button">Export PNG</button>
     <p id="file-status" role="status" aria-live="polite"></p>
-    <section class="pi-manager" aria-labelledby="pi-manager-title">
+    <section class="roadmap-manager" aria-labelledby="pi-manager-title">
       <h2 id="pi-manager-title">Program Increments</h2>
       <button id="add-pi" type="button">Add PI</button>
       <div id="pi-delete-warning" class="delete-warning" role="alert" hidden></div>
-      <form id="pi-editor" class="pi-editor" hidden novalidate>
-        <div class="pi-fields">
+      <form id="pi-editor" class="manager-editor" hidden novalidate>
+        <div class="manager-fields">
           <label>Name <input id="pi-name" name="name" type="text" required></label>
           <label>Start date <input id="pi-start" name="start" type="date" required></label>
           <label>End date <input id="pi-end" name="end" type="date" required></label>
         </div>
         <p id="pi-form-error" class="form-error" role="alert" hidden></p>
-        <div class="pi-actions">
+        <div class="manager-actions">
           <button id="save-pi" type="submit">Add PI</button>
           <button id="cancel-pi" type="button">Cancel</button>
         </div>
       </form>
-      <ul id="pi-list" class="pi-list"></ul>
+      <ul id="pi-list" class="manager-list"></ul>
+    </section>
+    <section class="roadmap-manager" aria-labelledby="sprint-manager-title">
+      <h2 id="sprint-manager-title">Sprints</h2>
+      <button id="add-sprint" type="button">Add Sprint</button>
+      <form id="sprint-editor" class="manager-editor" hidden novalidate>
+        <div class="manager-fields">
+          <label>Name <input id="sprint-name" name="name" type="text" required></label>
+          <label>Start date <input id="sprint-start" name="start" type="date" required></label>
+          <label>End date <input id="sprint-end" name="end" type="date" required></label>
+          <label>Parent PI
+            <select id="sprint-pi" name="piName" required></select>
+          </label>
+        </div>
+        <p id="sprint-form-error" class="form-error" role="alert" hidden></p>
+        <div class="manager-actions">
+          <button id="save-sprint" type="submit">Add Sprint</button>
+          <button id="cancel-sprint" type="button">Cancel</button>
+        </div>
+      </form>
+      <ul id="sprint-list" class="manager-list"></ul>
     </section>
     <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
   </main>
@@ -351,7 +371,7 @@
       PROGRAM_INCREMENTS.forEach((pi, index) => {
         const item = document.createElement("li");
         const details = document.createElement("span");
-        details.className = "pi-details";
+        details.className = "manager-details";
         details.textContent = `${pi.name}: ${pi.start} – ${pi.end}`;
         const edit = document.createElement("button");
         edit.type = "button";
@@ -414,6 +434,141 @@
 
     renderPiList();
 
+    const sprintList = document.getElementById("sprint-list");
+    const sprintEditor = document.getElementById("sprint-editor");
+    const sprintName = document.getElementById("sprint-name");
+    const sprintStart = document.getElementById("sprint-start");
+    const sprintEnd = document.getElementById("sprint-end");
+    const sprintPi = document.getElementById("sprint-pi");
+    const sprintFormError = document.getElementById("sprint-form-error");
+    const saveSprint = document.getElementById("save-sprint");
+    let editingSprintIndex = null;
+
+    const populatePiOptions = selectedPiName => {
+      sprintPi.replaceChildren();
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = PROGRAM_INCREMENTS.length ? "Select a PI" : "No Program Increments available";
+      sprintPi.append(placeholder);
+
+      PROGRAM_INCREMENTS.forEach(({ name }) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        option.selected = name === selectedPiName;
+        sprintPi.append(option);
+      });
+    };
+
+    const closeSprintEditor = () => {
+      editingSprintIndex = null;
+      sprintEditor.reset();
+      sprintEditor.hidden = true;
+      sprintFormError.hidden = true;
+    };
+
+    const openSprintEditor = index => {
+      editingSprintIndex = index;
+      sprintEditor.reset();
+      sprintFormError.hidden = true;
+      const sprint = index === null ? null : SPRINTS[index];
+      populatePiOptions(sprint?.piName);
+
+      if (sprint) {
+        sprintName.value = sprint.name;
+        sprintStart.value = sprint.start;
+        sprintEnd.value = sprint.end;
+        saveSprint.textContent = "Save changes";
+      } else {
+        saveSprint.textContent = "Add Sprint";
+      }
+
+      sprintEditor.hidden = false;
+      sprintName.focus();
+    };
+
+    const deleteSprint = async index => {
+      SPRINTS.splice(index, 1);
+      closeSprintEditor();
+      renderSprintList();
+      await refreshRoadmap();
+    };
+
+    const renderSprintList = () => {
+      sprintList.replaceChildren();
+      SPRINTS.forEach((sprint, index) => {
+        const item = document.createElement("li");
+        const details = document.createElement("span");
+        details.className = "manager-details";
+        details.textContent = `${sprint.name}: ${sprint.start} – ${sprint.end} (${sprint.piName})`;
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.textContent = "Edit";
+        edit.setAttribute("aria-label", `Edit ${sprint.name}`);
+        edit.addEventListener("click", () => openSprintEditor(index));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Delete";
+        remove.setAttribute("aria-label", `Delete ${sprint.name}`);
+        remove.addEventListener("click", () => deleteSprint(index));
+        item.append(details, edit, remove);
+        sprintList.append(item);
+      });
+
+      if (!SPRINTS.length) {
+        const empty = document.createElement("li");
+        empty.textContent = "No Sprints yet.";
+        sprintList.append(empty);
+      }
+    };
+
+    document.getElementById("add-sprint").addEventListener("click", () => openSprintEditor(null));
+    document.getElementById("cancel-sprint").addEventListener("click", closeSprintEditor);
+    sprintEditor.addEventListener("submit", async event => {
+      event.preventDefault();
+      const name = sprintName.value.trim();
+      const start = sprintStart.value;
+      const end = sprintEnd.value;
+      const piName = sprintPi.value;
+
+      if (!name) {
+        sprintFormError.textContent = "Name is required.";
+        sprintFormError.hidden = false;
+        sprintName.focus();
+        return;
+      }
+      if (!start || !end) {
+        sprintFormError.textContent = "Start date and end date are required.";
+        sprintFormError.hidden = false;
+        (!start ? sprintStart : sprintEnd).focus();
+        return;
+      }
+      if (end <= start) {
+        sprintFormError.textContent = "End date must be after start date.";
+        sprintFormError.hidden = false;
+        sprintEnd.focus();
+        return;
+      }
+      if (!PROGRAM_INCREMENTS.some(({ name: piNameOption }) => piNameOption === piName)) {
+        sprintFormError.textContent = "Select a parent PI from the current Program Increments.";
+        sprintFormError.hidden = false;
+        sprintPi.focus();
+        return;
+      }
+
+      const sprint = { name, start, end, piName };
+      if (editingSprintIndex === null) {
+        SPRINTS.push(sprint);
+      } else {
+        SPRINTS[editingSprintIndex] = sprint;
+      }
+      closeSprintEditor();
+      renderSprintList();
+      await refreshRoadmap();
+    });
+
+    renderSprintList();
+
     const openRoadmap = document.getElementById("open-roadmap");
     const saveRoadmap = document.getElementById("save-roadmap");
     const fileStatus = document.getElementById("file-status");
@@ -464,8 +619,10 @@
         TASKS = roadmap.tasks;
         roadmapFileHandle = fileHandle;
         closePiEditor();
+        closeSprintEditor();
         hideDeleteWarning();
         renderPiList();
+        renderSprintList();
         await refreshRoadmap();
         fileStatus.textContent = `Opened ${file.name}`;
       } catch (error) {
