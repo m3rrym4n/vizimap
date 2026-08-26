@@ -15,23 +15,26 @@
       <option value="sprint">Sprint</option>
       <option value="pi">PI</option>
     </select>
+    <button id="open-roadmap" type="button">Open Roadmap</button>
+    <button id="save-roadmap" type="button">Save</button>
     <button id="export-png" type="button">Export PNG</button>
+    <p id="file-status" role="status" aria-live="polite"></p>
     <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
   </main>
 
   <script>
-    const PROGRAM_INCREMENTS = [
+    let PROGRAM_INCREMENTS = [
       { name: "PI-1", start: "2025-01-06", end: "2025-03-28" },
       { name: "PI-2", start: "2025-03-31", end: "2025-06-20" }
     ];
 
-    const SPRINTS = [
+    let SPRINTS = [
       { name: "Sprint 1.1", start: "2025-01-06", end: "2025-01-24", piName: "PI-1" },
       { name: "Sprint 1.2", start: "2025-01-27", end: "2025-02-14", piName: "PI-1" },
       { name: "Sprint 1.3", start: "2025-02-17", end: "2025-03-07", piName: "PI-1" }
     ];
 
-    const TASKS = [
+    let TASKS = [
       { name: "Define roadmap", start: "2025-01-06", end: "2025-01-10", status: "Done", owner: "Stan" },
       { name: "Validate user needs", start: "2025-01-13", end: "2025-01-24", status: "In progress", owner: "Maya" },
       { name: "Prototype timeline", start: "2025-01-27", end: "2025-02-07", status: "Planned", owner: "Lee" },
@@ -47,42 +50,7 @@
     };
     const UNKNOWN_STATUS_COLOR = "#a1a1aa";
 
-    const programIncrementTrace = {
-      type: "bar",
-      orientation: "h",
-      x: PROGRAM_INCREMENTS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
-      base: PROGRAM_INCREMENTS.map(({ start }) => start),
-      y: PROGRAM_INCREMENTS.map(() => 0),
-      text: PROGRAM_INCREMENTS.map(({ name }) => name),
-      textposition: "inside",
-      insidetextanchor: "middle",
-      customdata: PROGRAM_INCREMENTS.map(({ start, end }) => [start, end]),
-      hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
-      marker: { color: "#2563eb" },
-      width: 0.7,
-      name: "Program Increments",
-      showlegend: false
-    };
-
-    const sprintTrace = {
-      type: "bar",
-      orientation: "h",
-      x: SPRINTS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
-      base: SPRINTS.map(({ start }) => start),
-      y: SPRINTS.map(() => 1),
-      text: SPRINTS.map(({ name }) => name),
-      textposition: "inside",
-      insidetextanchor: "middle",
-      customdata: SPRINTS.map(({ start, end }) => [start, end]),
-      hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
-      marker: { color: "#93c5fd" },
-      width: 0.45,
-      name: "Sprints",
-      showlegend: false
-    };
-
     const taskRowStart = 2.75;
-    const taskRowPositions = TASKS.map((_, index) => taskRowStart + index);
 
     const normalizeStatus = status => {
       const key = String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -93,36 +61,6 @@
       status === "unknown"
         ? "Unknown"
         : status.replaceAll("_", " ").replace(/^./, letter => letter.toUpperCase());
-
-    const taskTraces = [
-      ...Object.entries(STATUS_COLORS),
-      ["unknown", UNKNOWN_STATUS_COLOR]
-    ].map(([statusKey, color]) => {
-      const tasksForStatus = TASKS
-        .map((task, index) => ({ task, rowPosition: taskRowPositions[index] }))
-        .filter(({ task }) => normalizeStatus(task.status) === statusKey);
-
-      return {
-        type: "bar",
-        orientation: "h",
-        x: tasksForStatus.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
-        base: tasksForStatus.map(({ task: { start } }) => start),
-        y: tasksForStatus.map(({ rowPosition }) => rowPosition),
-        customdata: tasksForStatus.map(({ task: { name, start, end, status, owner } }) =>
-          [name, start, end, status || "Unknown", owner]
-        ),
-        hovertemplate: tasksForStatus.map(({ task: { owner } }) =>
-          "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
-          "<br>Status: %{customdata[3]}" +
-          (owner ? "<br>Owner: %{customdata[4]}" : "") +
-          "<extra></extra>"
-        ),
-        marker: { color },
-        width: 0.6,
-        name: statusLabel(statusKey),
-        legendgroup: "task-status"
-      };
-    }).filter(({ x }) => x.length);
 
     const boundaryShapes = (items, line) => items.flatMap(({ start, end }) =>
       [start, end].map(date => ({
@@ -136,11 +74,6 @@
         line
       }))
     );
-
-    const alignmentGridlines = [
-      ...boundaryShapes(SPRINTS, { color: "#cbd5e1", width: 1, dash: "dot" }),
-      ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
-    ];
 
     const today = new Date();
     const todayLine = {
@@ -160,10 +93,68 @@
     };
 
     const chart = document.getElementById("roadmap-chart");
-    const chartReady = Plotly.newPlot(
-      chart,
-      [programIncrementTrace, sprintTrace, ...taskTraces],
-      {
+    let chartReady;
+
+    const renderChart = () => {
+      const taskRowPositions = TASKS.map((_, index) => taskRowStart + index);
+      const bandTrace = (items, row, color, name, width) => ({
+        type: "bar",
+        orientation: "h",
+        x: items.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
+        base: items.map(({ start }) => start),
+        y: items.map(() => row),
+        text: items.map(({ name: itemName }) => itemName),
+        textposition: "inside",
+        insidetextanchor: "middle",
+        customdata: items.map(({ start, end }) => [start, end]),
+        hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
+        marker: { color },
+        width,
+        name,
+        showlegend: false
+      });
+      const taskTraces = [
+        ...Object.entries(STATUS_COLORS),
+        ["unknown", UNKNOWN_STATUS_COLOR]
+      ].map(([statusKey, color]) => {
+        const tasksForStatus = TASKS
+          .map((task, index) => ({ task, rowPosition: taskRowPositions[index] }))
+          .filter(({ task }) => normalizeStatus(task.status) === statusKey);
+
+        return {
+          type: "bar",
+          orientation: "h",
+          x: tasksForStatus.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
+          base: tasksForStatus.map(({ task: { start } }) => start),
+          y: tasksForStatus.map(({ rowPosition }) => rowPosition),
+          customdata: tasksForStatus.map(({ task: { name, start, end, status, owner } }) =>
+            [name, start, end, status || "Unknown", owner]
+          ),
+          hovertemplate: tasksForStatus.map(({ task: { owner } }) =>
+            "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
+            "<br>Status: %{customdata[3]}" +
+            (owner ? "<br>Owner: %{customdata[4]}" : "") +
+            "<extra></extra>"
+          ),
+          marker: { color },
+          width: 0.6,
+          name: statusLabel(statusKey),
+          legendgroup: "task-status"
+        };
+      }).filter(({ x }) => x.length);
+      const alignmentGridlines = [
+        ...boundaryShapes(SPRINTS, { color: "#cbd5e1", width: 1, dash: "dot" }),
+        ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
+      ];
+
+      chartReady = Plotly.react(
+        chart,
+        [
+          bandTrace(PROGRAM_INCREMENTS, 0, "#2563eb", "Program Increments", 0.7),
+          bandTrace(SPRINTS, 1, "#93c5fd", "Sprints", 0.45),
+          ...taskTraces
+        ],
+        {
         title: "Product Roadmap",
         barmode: "overlay",
         shapes: [...alignmentGridlines, todayLine],
@@ -180,9 +171,13 @@
           range: [taskRowStart + TASKS.length - 0.4, -0.6],
           automargin: true
         }
-      },
-      { responsive: true }
-    );
+        },
+        { responsive: true }
+      );
+      return chartReady;
+    };
+
+    renderChart();
 
     const exportPng = document.getElementById("export-png");
     exportPng.addEventListener("click", async () => {
@@ -232,6 +227,92 @@
           }
       );
     });
+
+    const openRoadmap = document.getElementById("open-roadmap");
+    const saveRoadmap = document.getElementById("save-roadmap");
+    const fileStatus = document.getElementById("file-status");
+    let roadmapFileHandle = null;
+
+    const filePickerOptions = {
+      types: [{
+        description: "Vizimap roadmap",
+        accept: { "application/json": [".json"] }
+      }]
+    };
+
+    const showFileError = (action, error) => {
+      if (error.name === "AbortError") return;
+      fileStatus.textContent = `Could not ${action}: ${error.message}`;
+    };
+
+    const requireFileSystemAccess = () => {
+      if ("showOpenFilePicker" in window && "showSaveFilePicker" in window) return true;
+      fileStatus.textContent = "Open and Save require Chrome or Edge with File System Access API support.";
+      return false;
+    };
+
+    const parseRoadmap = text => {
+      const roadmap = JSON.parse(text);
+      if (
+        !roadmap ||
+        !Array.isArray(roadmap.programIncrements) ||
+        !Array.isArray(roadmap.sprints) ||
+        !Array.isArray(roadmap.tasks)
+      ) {
+        throw new Error("Roadmap JSON must contain programIncrements, sprints, and tasks arrays.");
+      }
+      return roadmap;
+    };
+
+    openRoadmap.addEventListener("click", async () => {
+      if (!requireFileSystemAccess()) return;
+      openRoadmap.disabled = true;
+
+      try {
+        const [fileHandle] = await window.showOpenFilePicker(filePickerOptions);
+        const file = await fileHandle.getFile();
+        const roadmap = parseRoadmap(await file.text());
+
+        PROGRAM_INCREMENTS = roadmap.programIncrements;
+        SPRINTS = roadmap.sprints;
+        TASKS = roadmap.tasks;
+        roadmapFileHandle = fileHandle;
+        await renderChart();
+        tickMode.dispatchEvent(new Event("change"));
+        fileStatus.textContent = `Opened ${file.name}`;
+      } catch (error) {
+        showFileError("open roadmap", error);
+      } finally {
+        openRoadmap.disabled = false;
+      }
+    });
+
+    saveRoadmap.addEventListener("click", async () => {
+      if (!requireFileSystemAccess()) return;
+      saveRoadmap.disabled = true;
+
+      try {
+        const fileHandle = roadmapFileHandle || await window.showSaveFilePicker({
+          ...filePickerOptions,
+          suggestedName: "roadmap.json"
+        });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify({
+          programIncrements: PROGRAM_INCREMENTS,
+          sprints: SPRINTS,
+          tasks: TASKS
+        }, null, 2) + "\n");
+        await writable.close();
+        roadmapFileHandle = fileHandle;
+        fileStatus.textContent = `Saved ${fileHandle.name}`;
+      } catch (error) {
+        showFileError("save roadmap", error);
+      } finally {
+        saveRoadmap.disabled = false;
+      }
+    });
+
+    requireFileSystemAccess();
   </script>
 </body>
 </html>
