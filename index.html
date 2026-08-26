@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vizimap</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; color: #172033; }
+    main { margin: 0 auto; max-width: 1200px; padding: 1rem; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .pi-manager { border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 1rem; padding: 1rem; }
+    .pi-manager h2 { display: inline-block; font-size: 1.2rem; margin: 0 1rem 0 0; }
+    .pi-list { list-style: none; margin: 1rem 0 0; padding: 0; }
+    .pi-list li { align-items: center; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; padding: 0.65rem 0; }
+    .pi-details { flex: 1; }
+    .pi-editor { background: #f8fafc; border-radius: 0.4rem; margin-top: 1rem; padding: 1rem; }
+    .pi-editor[hidden] { display: none; }
+    .pi-fields { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .pi-fields label { display: grid; gap: 0.25rem; }
+    .pi-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .form-error, .delete-warning { color: #b91c1c; }
+    .delete-warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.4rem; margin-top: 1rem; padding: 0.75rem; }
+  </style>
 </head>
 <body>
   <main>
@@ -19,6 +37,24 @@
     <button id="save-roadmap" type="button">Save</button>
     <button id="export-png" type="button">Export PNG</button>
     <p id="file-status" role="status" aria-live="polite"></p>
+    <section class="pi-manager" aria-labelledby="pi-manager-title">
+      <h2 id="pi-manager-title">Program Increments</h2>
+      <button id="add-pi" type="button">Add PI</button>
+      <div id="pi-delete-warning" class="delete-warning" role="alert" hidden></div>
+      <form id="pi-editor" class="pi-editor" hidden novalidate>
+        <div class="pi-fields">
+          <label>Name <input id="pi-name" name="name" type="text" required></label>
+          <label>Start date <input id="pi-start" name="start" type="date" required></label>
+          <label>End date <input id="pi-end" name="end" type="date" required></label>
+        </div>
+        <p id="pi-form-error" class="form-error" role="alert" hidden></p>
+        <div class="pi-actions">
+          <button id="save-pi" type="submit">Add PI</button>
+          <button id="cancel-pi" type="button">Cancel</button>
+        </div>
+      </form>
+      <ul id="pi-list" class="pi-list"></ul>
+    </section>
     <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
   </main>
 
@@ -228,6 +264,156 @@
       );
     });
 
+    const piList = document.getElementById("pi-list");
+    const piEditor = document.getElementById("pi-editor");
+    const piName = document.getElementById("pi-name");
+    const piStart = document.getElementById("pi-start");
+    const piEnd = document.getElementById("pi-end");
+    const piFormError = document.getElementById("pi-form-error");
+    const piDeleteWarning = document.getElementById("pi-delete-warning");
+    const savePi = document.getElementById("save-pi");
+    let editingPiIndex = null;
+
+    const refreshRoadmap = async () => {
+      await renderChart();
+      tickMode.dispatchEvent(new Event("change"));
+    };
+
+    const hideDeleteWarning = () => {
+      piDeleteWarning.hidden = true;
+      piDeleteWarning.replaceChildren();
+    };
+
+    const closePiEditor = () => {
+      editingPiIndex = null;
+      piEditor.reset();
+      piEditor.hidden = true;
+      piFormError.hidden = true;
+    };
+
+    const openPiEditor = index => {
+      hideDeleteWarning();
+      editingPiIndex = index;
+      piEditor.reset();
+      piFormError.hidden = true;
+
+      if (index === null) {
+        savePi.textContent = "Add PI";
+      } else {
+        const pi = PROGRAM_INCREMENTS[index];
+        piName.value = pi.name;
+        piStart.value = pi.start;
+        piEnd.value = pi.end;
+        savePi.textContent = "Save changes";
+      }
+
+      piEditor.hidden = false;
+      piName.focus();
+    };
+
+    const deletePi = async index => {
+      PROGRAM_INCREMENTS.splice(index, 1);
+      closePiEditor();
+      hideDeleteWarning();
+      renderPiList();
+      await refreshRoadmap();
+    };
+
+    const requestPiDelete = index => {
+      closePiEditor();
+      hideDeleteWarning();
+      const pi = PROGRAM_INCREMENTS[index];
+      const referencedSprints = SPRINTS.filter(sprint => sprint.piName === pi.name);
+
+      if (!referencedSprints.length) {
+        deletePi(index);
+        return;
+      }
+
+      const message = document.createElement("p");
+      const sprintNames = referencedSprints.map(({ name }) => name).join(", ");
+      message.textContent = `Cannot safely delete ${pi.name}: ${referencedSprints.length} sprint${referencedSprints.length === 1 ? "" : "s"} reference it (${sprintNames}). Deleting it will leave those references orphaned.`;
+      const confirmDelete = document.createElement("button");
+      confirmDelete.type = "button";
+      confirmDelete.textContent = "Delete PI anyway";
+      confirmDelete.addEventListener("click", () => deletePi(index));
+      const cancelDelete = document.createElement("button");
+      cancelDelete.type = "button";
+      cancelDelete.textContent = "Cancel";
+      cancelDelete.addEventListener("click", hideDeleteWarning);
+      piDeleteWarning.append(message, confirmDelete, " ", cancelDelete);
+      piDeleteWarning.hidden = false;
+      piDeleteWarning.scrollIntoView({ block: "nearest" });
+    };
+
+    const renderPiList = () => {
+      piList.replaceChildren();
+      PROGRAM_INCREMENTS.forEach((pi, index) => {
+        const item = document.createElement("li");
+        const details = document.createElement("span");
+        details.className = "pi-details";
+        details.textContent = `${pi.name}: ${pi.start} – ${pi.end}`;
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.textContent = "Edit";
+        edit.setAttribute("aria-label", `Edit ${pi.name}`);
+        edit.addEventListener("click", () => openPiEditor(index));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Delete";
+        remove.setAttribute("aria-label", `Delete ${pi.name}`);
+        remove.addEventListener("click", () => requestPiDelete(index));
+        item.append(details, edit, remove);
+        piList.append(item);
+      });
+
+      if (!PROGRAM_INCREMENTS.length) {
+        const empty = document.createElement("li");
+        empty.textContent = "No Program Increments yet.";
+        piList.append(empty);
+      }
+    };
+
+    document.getElementById("add-pi").addEventListener("click", () => openPiEditor(null));
+    document.getElementById("cancel-pi").addEventListener("click", closePiEditor);
+    piEditor.addEventListener("submit", async event => {
+      event.preventDefault();
+      const name = piName.value.trim();
+      const start = piStart.value;
+      const end = piEnd.value;
+
+      if (!name) {
+        piFormError.textContent = "Name is required.";
+        piFormError.hidden = false;
+        piName.focus();
+        return;
+      }
+      if (!start || !end) {
+        piFormError.textContent = "Start date and end date are required.";
+        piFormError.hidden = false;
+        (!start ? piStart : piEnd).focus();
+        return;
+      }
+      if (end <= start) {
+        piFormError.textContent = "End date must be after start date.";
+        piFormError.hidden = false;
+        piEnd.focus();
+        return;
+      }
+
+      const programIncrement = { name, start, end };
+      if (editingPiIndex === null) {
+        PROGRAM_INCREMENTS.push(programIncrement);
+      } else {
+        PROGRAM_INCREMENTS[editingPiIndex] = programIncrement;
+      }
+      closePiEditor();
+      renderPiList();
+      await refreshRoadmap();
+    });
+
+    renderPiList();
+
     const openRoadmap = document.getElementById("open-roadmap");
     const saveRoadmap = document.getElementById("save-roadmap");
     const fileStatus = document.getElementById("file-status");
@@ -277,8 +463,10 @@
         SPRINTS = roadmap.sprints;
         TASKS = roadmap.tasks;
         roadmapFileHandle = fileHandle;
-        await renderChart();
-        tickMode.dispatchEvent(new Event("change"));
+        closePiEditor();
+        hideDeleteWarning();
+        renderPiList();
+        await refreshRoadmap();
         fileStatus.textContent = `Opened ${file.name}`;
       } catch (error) {
         showFileError("open roadmap", error);
