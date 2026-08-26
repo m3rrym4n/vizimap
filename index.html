@@ -9,6 +9,12 @@
 <body>
   <main>
     <h1>Vizimap</h1>
+    <label for="tick-mode">Timeline labels:</label>
+    <select id="tick-mode">
+      <option value="calendar" selected>Calendar</option>
+      <option value="sprint">Sprint</option>
+      <option value="pi">PI</option>
+    </select>
     <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
   </main>
 
@@ -175,6 +181,28 @@
       },
       { responsive: true }
     );
+
+    const tickMode = document.getElementById("tick-mode");
+    tickMode.addEventListener("change", () => {
+      const tickItems = tickMode.value === "sprint"
+        ? SPRINTS
+        : tickMode.value === "pi"
+          ? PROGRAM_INCREMENTS
+          : null;
+
+      Plotly.relayout("roadmap-chart", tickItems
+        ? {
+            "xaxis.tickmode": "array",
+            "xaxis.tickvals": tickItems.map(({ start }) => start),
+            "xaxis.ticktext": tickItems.map(({ name }) => name)
+          }
+        : {
+            "xaxis.tickmode": "auto",
+            "xaxis.tickvals": null,
+            "xaxis.ticktext": null
+          }
+      );
+    });
   </script>
 </body>
 </html>
