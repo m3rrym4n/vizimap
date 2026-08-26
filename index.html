@@ -142,6 +142,7 @@
             <select id="task-status" name="status" required></select>
           </label>
           <label>Owner <input id="task-owner" name="owner" type="text"></label>
+          <label>Color <input id="task-color" name="color" type="color"></label>
           <label>Lane
             <select id="task-lane" name="lane" required></select>
           </label>
@@ -187,19 +188,16 @@
       { name: "Pilot Launch", start: "2025-03-10", end: "2025-03-10", status: "Planned", owner: "Maya", lane: "Engineering" }
     ];
 
-    const STATUS_COLORS = {
-      planned: "#64748b",
-      in_progress: "#2563eb",
-      done: "#16a34a",
-      blocked: "#dc2626"
-    };
-    const UNKNOWN_STATUS_COLOR = "#a1a1aa";
+    const TASK_STATUSES = ["planned", "in_progress", "done", "blocked"];
+    const DEFAULT_TASK_COLOR = "#2563eb";
+    const colorForTask = task =>
+      /^#[0-9a-f]{6}$/i.test(task.color || "") ? task.color : DEFAULT_TASK_COLOR;
 
     const taskRowStart = 2.75;
 
     const normalizeStatus = status => {
       const key = String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-      return Object.hasOwn(STATUS_COLORS, key) ? key : "unknown";
+      return TASK_STATUSES.includes(key) ? key : "unknown";
     };
 
     const statusLabel = status =>
@@ -299,20 +297,16 @@
         hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
         marker: { color },
         width,
-        name,
-        showlegend: false
+        name
       });
+      const tasksWithRows = TASKS.map(task => ({
+        task,
+        rowPosition: laneRowPositions.get(task.lane)
+      }));
+      const regularTasks = tasksWithRows.filter(({ task }) => task.start !== task.end);
+      const milestones = tasksWithRows.filter(({ task }) => task.start === task.end);
       const taskTraces = [
-        ...Object.entries(STATUS_COLORS),
-        ["unknown", UNKNOWN_STATUS_COLOR]
-      ].flatMap(([statusKey, color]) => {
-        const tasksForStatus = TASKS
-          .map(task => ({ task, rowPosition: laneRowPositions.get(task.lane) }))
-          .filter(({ task }) => normalizeStatus(task.status) === statusKey);
-        const regularTasks = tasksForStatus.filter(({ task }) => task.start !== task.end);
-        const milestones = tasksForStatus.filter(({ task }) => task.start === task.end);
-        const statusName = statusLabel(statusKey);
-        const barTrace = {
+        ...(regularTasks.length ? [{
           type: "bar",
           meta: "task",
           orientation: "h",
@@ -328,12 +322,10 @@
             (owner ? "<br>Owner: %{customdata[4]}" : "") +
             "<extra></extra>"
           ),
-          marker: { color },
-          width: 0.6,
-          name: statusName,
-          legendgroup: "task-status"
-        };
-        const milestoneTrace = {
+          marker: { color: regularTasks.map(({ task }) => colorForTask(task)) },
+          width: 0.6
+        }] : []),
+        ...(milestones.length ? [{
           type: "scatter",
           meta: "task",
           mode: "markers+text",
@@ -350,18 +342,14 @@
             (owner ? "<br>Owner: %{customdata[4]}" : "") +
             "<extra></extra>"
           ),
-          marker: { color, size: 14, symbol: "diamond" },
-          name: statusName,
-          legendgroup: "task-status",
-          showlegend: !regularTasks.length,
+          marker: {
+            color: milestones.map(({ task }) => colorForTask(task)),
+            size: 14,
+            symbol: "diamond"
+          },
           cliponaxis: false
-        };
-
-        return [
-          ...(regularTasks.length ? [barTrace] : []),
-          ...(milestones.length ? [milestoneTrace] : [])
-        ];
-      });
+        }] : [])
+      ];
       const alignmentGridlines = [
         ...boundaryShapes(SPRINTS, { color: "#cbd5e1", width: 1, dash: "dot" }),
         ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
@@ -378,8 +366,8 @@
         title: CHART_TITLE,
         height: Math.max(640, 370 + LANES.length * 70),
         barmode: "overlay",
+        showlegend: false,
         shapes: [...alignmentGridlines, todayLine],
-        legend: { title: { text: "Task status" } },
         xaxis: {
           type: "date",
           title: "Date",
@@ -898,13 +886,14 @@
     const taskEnd = document.getElementById("task-end");
     const taskStatus = document.getElementById("task-status");
     const taskOwner = document.getElementById("task-owner");
+    const taskColor = document.getElementById("task-color");
     const taskLane = document.getElementById("task-lane");
     const taskDescription = document.getElementById("task-description");
     const taskFormError = document.getElementById("task-form-error");
     const saveTask = document.getElementById("save-task");
     let editingTaskIndex = null;
 
-    Object.keys(STATUS_COLORS).forEach(status => {
+    TASK_STATUSES.forEach(status => {
       const option = document.createElement("option");
       option.value = status;
       option.textContent = statusLabel(status);
@@ -942,6 +931,7 @@
       populateLaneOptions(task?.lane);
 
       if (index === null) {
+        taskColor.value = DEFAULT_TASK_COLOR;
         saveTask.textContent = "Add Task";
       } else {
         taskName.value = task.name;
@@ -949,6 +939,7 @@
         taskEnd.value = task.end;
         taskStatus.value = normalizeStatus(task.status);
         taskOwner.value = task.owner || "";
+        taskColor.value = task.color || DEFAULT_TASK_COLOR;
         taskDescription.value = task.description || "";
         saveTask.textContent = "Save changes";
       }
@@ -1002,6 +993,7 @@
       const end = taskEnd.value;
       const status = taskStatus.value;
       const owner = taskOwner.value.trim();
+      const color = taskColor.value;
       const lane = taskLane.value;
       const description = taskDescription.value.trim();
 
@@ -1017,13 +1009,13 @@
         (!start ? taskStart : taskEnd).focus();
         return;
       }
-      if (end <= start) {
-        taskFormError.textContent = "End date must be after start date.";
+      if (end < start) {
+        taskFormError.textContent = "End date must be on or after start date.";
         taskFormError.hidden = false;
         taskEnd.focus();
         return;
       }
-      if (!Object.hasOwn(STATUS_COLORS, status)) {
+      if (!TASK_STATUSES.includes(status)) {
         taskFormError.textContent = "Select a status from the available options.";
         taskFormError.hidden = false;
         taskStatus.focus();
@@ -1036,7 +1028,7 @@
         taskLane.focus();
         return;
       }
-      const task = { name, start, end, status, lane };
+      const task = { name, start, end, status, lane, color };
       if (owner) task.owner = owner;
       if (description) task.description = description;
       if (editingTaskIndex === null) {
