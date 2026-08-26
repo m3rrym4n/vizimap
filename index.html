@@ -381,7 +381,7 @@
           mode: "markers+text",
           x: milestones.map(({ task: { start } }) => start),
           y: milestones.map(({ rowPosition }) => rowPosition),
-          text: milestones.map(({ task: { name } }) => name),
+          text: milestones.map(({ task: { name, start } }) => `${name}<br>${start}`),
           textposition: "top center",
           customdata: milestones.map(({ task }) =>
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
