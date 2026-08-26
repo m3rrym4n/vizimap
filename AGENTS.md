@@ -6,6 +6,7 @@ A standalone, single-file HTML tool: a Gantt chart for product roadmaps, built w
 
 - **Program Increments (PI) and Sprints are overlaid as bands at the top of the chart.** Task activity bars render below them, sharing the same date-based x-axis, so PI/sprint boundaries align visually with the tasks underneath.
 - **Tasks are organized into named Lanes (swimlanes), not one row per task.** All tasks assigned to the same lane render on that lane's single row. This is a deliberate change (2026-08-26) from the original one-row-per-task model. Lanes are independently manageable (add/edit/delete/reorder), separate from tasks themselves.
+- **Tasks carry a longer freeform description, surfaced by clicking their bar.** The existing hover tooltip stays as a quick-glance summary (name/dates/status/owner); clicking a task bar shows an on-chart overlay with its full description — a separate, more deliberate interaction (2026-08-26).
 - **This is a personal planning tool, not a hosted service.** There is no backend, no deploy target, no container. The deliverable is the file itself.
 - **This is a real roadmap-authoring tool, not just a static viewer.** The product owner creates, edits, and plans roadmaps directly in the tool — adding/editing/removing Program Increments, Sprints, Lanes, and Tasks through an in-app UI — to produce a clean visual to brief to leadership. This is a deliberate architecture decision (2026-08-26), not the original scope: the tool started as "hand-edit the JS arrays," and has grown into "open a roadmap file, edit it in the app, save it back."
 - **Two distinct view modes: Chart and Configure.** A toggle at the top of the page shows either the chart (plus PNG export) or the editing/configuration UI (PI/Sprint/Lane/Task forms and lists, plus Open/Save) — never both at once. Having both visible simultaneously was explicitly rejected as messy (2026-08-26).
@@ -19,10 +20,11 @@ A standalone, single-file HTML tool: a Gantt chart for product roadmaps, built w
   - `PROGRAM_INCREMENTS`: `[{ name, start, end }]`
   - `SPRINTS`: `[{ name, start, end, piName }]` (piName links a sprint to its parent PI for validation/grouping, not required for rendering)
   - `LANES`: `[{ name }]` — display order in this array is the display order in the chart (top to bottom). No separate `order` field; reordering means reordering this array.
-  - `TASKS`: `[{ name, start, end, status, owner?, lane }]` — `lane` references a `LANES` entry's `name`, same referencing convention as `SPRINTS.piName`.
+  - `TASKS`: `[{ name, start, end, status, owner?, lane, description? }]` — `lane` references a `LANES` entry's `name`, same referencing convention as `SPRINTS.piName`. `description` is optional freeform text, distinct from `name` (short label) — surfaced via click-to-overlay, not the hover tooltip.
 - Gantt bars use the standard Plotly technique: `type: 'bar', orientation: 'h'`, date-typed x-axis, `base` = start date, `x` = duration.
 - PI and Sprint bands render as their own rows at the top (same technique), with vertical dashed gridlines at PI/sprint boundaries extending down through the task rows below, so alignment is a literal visual gridline, not just proximity.
 - **Task rows are one-per-lane, not one-per-task.** Multiple tasks assigned to the same lane share that lane's row. **Deliberate scope boundary:** if two tasks in the same lane have overlapping date ranges, they will visually overlap on the chart — this is accepted as useful signal (a real scheduling conflict), not a bug. Automatic sub-row packing/offsetting for overlapping same-lane tasks is explicitly out of scope unless revisited later.
+- **Click vs. hover on task bars serve different purposes:** hover (native Plotly tooltip) = quick glance (name/dates/status/owner, unchanged since #5/#6). Click = deliberate, shows a dismissible on-chart overlay with the task's full `description`. These are separate interactions, not a replacement of one by the other.
 
 ## Persistence (decided 2026-08-26)
 
