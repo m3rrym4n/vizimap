@@ -6,18 +6,27 @@ A standalone, single-file HTML tool: a Gantt chart for product roadmaps, built w
 
 - **Program Increments (PI) and Sprints are overlaid as bands at the top of the chart.** Task activity bars render below them, sharing the same date-based x-axis, so PI/sprint boundaries align visually with the tasks underneath.
 - **This is a personal planning tool, not a hosted service.** There is no backend, no deploy target, no container. The deliverable is the file itself.
-- Data (Program Increments, Sprints, Tasks) lives as plain JS arrays near the top of the `<script>` block in `index.html`, hand-edited directly — not loaded from an API, not requiring a build step to change.
+- **This is a real roadmap-authoring tool, not just a static viewer.** The product owner creates, edits, and plans roadmaps directly in the tool — adding/editing/removing Program Increments, Sprints, and Tasks through an in-app UI — to produce a clean visual to brief to leadership. This is a deliberate architecture decision (2026-08-26), not the original scope: the tool started as "hand-edit the JS arrays," and has grown into "open a roadmap file, edit it in the app, save it back."
+- **Exportable to PNG** for dropping directly into briefs/slide decks (see #13).
 
 ## Architecture
 
 - Single file: `index.html`. HTML, CSS, and JS all inline.
-- Plotly.js via CDN script tag (`https://cdn.plot.ly/plotly-latest.min.js` or a pinned version — pin a specific version once first built, don't float on `latest` long-term).
-- Three data arrays define everything to render:
+- Plotly.js via CDN script tag, pinned to a specific version (`2.35.2` as of this writing) — don't float on `latest`.
+- Three data arrays/collections define everything to render — same shapes whether they come from the built-in sample data or a loaded file:
   - `PROGRAM_INCREMENTS`: `[{ name, start, end }]`
   - `SPRINTS`: `[{ name, start, end, piName }]` (piName links a sprint to its parent PI for validation/grouping, not required for rendering)
   - `TASKS`: `[{ name, start, end, status, owner? }]`
 - Gantt bars use the standard Plotly technique: `type: 'bar', orientation: 'h'`, date-typed x-axis, `base` = start date, `x` = duration.
 - PI and Sprint bands render as their own rows at the top (same technique), with vertical dashed gridlines at PI/sprint boundaries extending down through the task rows below, so alignment is a literal visual gridline, not just proximity.
+
+## Persistence (decided 2026-08-26)
+
+- **Primary mechanism: the File System Access API** (`window.showOpenFilePicker` / `showSaveFilePicker`). "Open Roadmap" picks a JSON file from disk; edits happen in memory; "Save" writes back to that same open file handle — no server, no download-then-manually-replace-the-file step. This is the intended day-to-day workflow: the JSON file sits next to `index.html` like a companion data file, opened and saved in place.
+- **Known limitation, accepted deliberately:** the File System Access API is Chromium-only (Chrome, Edge) — not supported in Firefox or Safari. This is fine for a personal tool built around one person's actual browser, but must not be silently broken elsewhere.
+- **Required fallback for unsupported browsers:** a plain `<input type="file">` to load a JSON file, and a download-triggered save (the same mechanism as the PNG export in #13, but for `.json`). This degrades the workflow (you re-select/re-download instead of saving in place) but must not error out or leave the page unusable.
+- **First-run behavior:** if no file has been opened yet, the app falls back to the built-in sample `PROGRAM_INCREMENTS`/`SPRINTS`/`TASKS` arrays already in the file — so `index.html` still opens and shows something meaningful with zero setup, same as today.
+- **JSON schema on disk** should be a single object wrapping the three arrays: `{ programIncrements: [...], sprints: [...], tasks: [...] }` — matches the in-memory shapes above, one file, no separate files per collection.
 
 ## Deployment
 
@@ -27,7 +36,7 @@ A standalone, single-file HTML tool: a Gantt chart for product roadmaps, built w
 
 - No frameworks (React, Vue, etc.) — plain HTML/CSS/JS plus the Plotly CDN script only.
 - No bundler, no npm install step. If a library is ever needed beyond Plotly, it comes from a CDN `<script>` tag, not a package manager.
-- Data arrays are the API. Any change to their shape must be reflected here in this file, since Stan edits them by hand.
+- The JSON schema above is the API once persistence lands. Any change to its shape must be reflected here.
 - Single branch (`main`). No dev/main split — there's no environment to promote between for a static file with no deploy step. PRs merge directly to `main` once CI (the sanity check) passes.
 
 ## Working philosophy (inherited from Pacific Shift Labs' standing rules)
