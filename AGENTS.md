@@ -5,27 +5,31 @@ A standalone, single-file HTML tool: a Gantt chart for product roadmaps, built w
 ## Product boundary
 
 - **Program Increments (PI) and Sprints are overlaid as bands at the top of the chart.** Task activity bars render below them, sharing the same date-based x-axis, so PI/sprint boundaries align visually with the tasks underneath.
+- **Tasks are organized into named Lanes (swimlanes), not one row per task.** All tasks assigned to the same lane render on that lane's single row. This is a deliberate change (2026-08-26) from the original one-row-per-task model. Lanes are independently manageable (add/edit/delete/reorder), separate from tasks themselves.
 - **This is a personal planning tool, not a hosted service.** There is no backend, no deploy target, no container. The deliverable is the file itself.
-- **This is a real roadmap-authoring tool, not just a static viewer.** The product owner creates, edits, and plans roadmaps directly in the tool — adding/editing/removing Program Increments, Sprints, and Tasks through an in-app UI — to produce a clean visual to brief to leadership. This is a deliberate architecture decision (2026-08-26), not the original scope: the tool started as "hand-edit the JS arrays," and has grown into "open a roadmap file, edit it in the app, save it back."
+- **This is a real roadmap-authoring tool, not just a static viewer.** The product owner creates, edits, and plans roadmaps directly in the tool — adding/editing/removing Program Increments, Sprints, Lanes, and Tasks through an in-app UI — to produce a clean visual to brief to leadership. This is a deliberate architecture decision (2026-08-26), not the original scope: the tool started as "hand-edit the JS arrays," and has grown into "open a roadmap file, edit it in the app, save it back."
+- **Two distinct view modes: Chart and Configure.** A toggle at the top of the page shows either the chart (plus PNG export) or the editing/configuration UI (PI/Sprint/Lane/Task forms and lists, plus Open/Save) — never both at once. Having both visible simultaneously was explicitly rejected as messy (2026-08-26).
 - **Exportable to PNG** for dropping directly into briefs/slide decks (see #13).
 
 ## Architecture
 
 - Single file: `index.html`. HTML, CSS, and JS all inline.
 - Plotly.js via CDN script tag, pinned to a specific version (`2.35.2` as of this writing) — don't float on `latest`.
-- Three data arrays/collections define everything to render — same shapes whether they come from the built-in sample data or a loaded file:
+- Data collections — same shapes whether they come from the built-in sample data or a loaded file:
   - `PROGRAM_INCREMENTS`: `[{ name, start, end }]`
   - `SPRINTS`: `[{ name, start, end, piName }]` (piName links a sprint to its parent PI for validation/grouping, not required for rendering)
-  - `TASKS`: `[{ name, start, end, status, owner? }]`
+  - `LANES`: `[{ name }]` — display order in this array is the display order in the chart (top to bottom). No separate `order` field; reordering means reordering this array.
+  - `TASKS`: `[{ name, start, end, status, owner?, lane }]` — `lane` references a `LANES` entry's `name`, same referencing convention as `SPRINTS.piName`.
 - Gantt bars use the standard Plotly technique: `type: 'bar', orientation: 'h'`, date-typed x-axis, `base` = start date, `x` = duration.
 - PI and Sprint bands render as their own rows at the top (same technique), with vertical dashed gridlines at PI/sprint boundaries extending down through the task rows below, so alignment is a literal visual gridline, not just proximity.
+- **Task rows are one-per-lane, not one-per-task.** Multiple tasks assigned to the same lane share that lane's row. **Deliberate scope boundary:** if two tasks in the same lane have overlapping date ranges, they will visually overlap on the chart — this is accepted as useful signal (a real scheduling conflict), not a bug. Automatic sub-row packing/offsetting for overlapping same-lane tasks is explicitly out of scope unless revisited later.
 
 ## Persistence (decided 2026-08-26)
 
 - **Mechanism: the File System Access API** (`window.showOpenFilePicker` / `showSaveFilePicker`). "Open Roadmap" picks a JSON file from disk; edits happen in memory; "Save" writes back to that same open file handle — no server, no download-then-manually-replace-the-file step. This is the intended day-to-day workflow: the JSON file sits next to `index.html` like a companion data file, opened and saved in place.
 - **Chromium-only by design, not an oversight.** The File System Access API only works in Chrome/Edge, not Firefox or Safari. Confirmed 2026-08-26: Stan only uses Chrome/Edge, so **no fallback for other browsers is required.** Don't build one — it would be unused complexity. If the API is unavailable, a clear error message is enough; no need for a degraded-but-working alternate path.
-- **First-run behavior:** if no file has been opened yet, the app falls back to the built-in sample `PROGRAM_INCREMENTS`/`SPRINTS`/`TASKS` arrays already in the file — so `index.html` still opens and shows something meaningful with zero setup, same as today.
-- **JSON schema on disk** should be a single object wrapping the three arrays: `{ programIncrements: [...], sprints: [...], tasks: [...] }` — matches the in-memory shapes above, one file, no separate files per collection.
+- **First-run behavior:** if no file has been opened yet, the app falls back to the built-in sample data already in the file — so `index.html` still opens and shows something meaningful with zero setup, same as today.
+- **JSON schema on disk** should be a single object wrapping the four collections: `{ programIncrements: [...], sprints: [...], lanes: [...], tasks: [...] }` — matches the in-memory shapes above, one file, no separate files per collection.
 
 ## Deployment
 
