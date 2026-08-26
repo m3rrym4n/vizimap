@@ -75,6 +75,27 @@
       </form>
       <ul id="sprint-list" class="manager-list"></ul>
     </section>
+    <section class="roadmap-manager" aria-labelledby="task-manager-title">
+      <h2 id="task-manager-title">Tasks</h2>
+      <button id="add-task" type="button">Add Task</button>
+      <form id="task-editor" class="manager-editor" hidden novalidate>
+        <div class="manager-fields">
+          <label>Name <input id="task-name" name="name" type="text" required></label>
+          <label>Start date <input id="task-start" name="start" type="date" required></label>
+          <label>End date <input id="task-end" name="end" type="date" required></label>
+          <label>Status
+            <select id="task-status" name="status" required></select>
+          </label>
+          <label>Owner <input id="task-owner" name="owner" type="text"></label>
+        </div>
+        <p id="task-form-error" class="form-error" role="alert" hidden></p>
+        <div class="manager-actions">
+          <button id="save-task" type="submit">Add Task</button>
+          <button id="cancel-task" type="button">Cancel</button>
+        </div>
+      </form>
+      <ul id="task-list" class="manager-list"></ul>
+    </section>
     <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
   </main>
 
@@ -569,6 +590,137 @@
 
     renderSprintList();
 
+    const taskList = document.getElementById("task-list");
+    const taskEditor = document.getElementById("task-editor");
+    const taskName = document.getElementById("task-name");
+    const taskStart = document.getElementById("task-start");
+    const taskEnd = document.getElementById("task-end");
+    const taskStatus = document.getElementById("task-status");
+    const taskOwner = document.getElementById("task-owner");
+    const taskFormError = document.getElementById("task-form-error");
+    const saveTask = document.getElementById("save-task");
+    let editingTaskIndex = null;
+
+    Object.keys(STATUS_COLORS).forEach(status => {
+      const option = document.createElement("option");
+      option.value = status;
+      option.textContent = statusLabel(status);
+      taskStatus.append(option);
+    });
+
+    const closeTaskEditor = () => {
+      editingTaskIndex = null;
+      taskEditor.reset();
+      taskEditor.hidden = true;
+      taskFormError.hidden = true;
+    };
+
+    const openTaskEditor = index => {
+      editingTaskIndex = index;
+      taskEditor.reset();
+      taskFormError.hidden = true;
+
+      if (index === null) {
+        saveTask.textContent = "Add Task";
+      } else {
+        const task = TASKS[index];
+        taskName.value = task.name;
+        taskStart.value = task.start;
+        taskEnd.value = task.end;
+        taskStatus.value = normalizeStatus(task.status);
+        taskOwner.value = task.owner || "";
+        saveTask.textContent = "Save changes";
+      }
+
+      taskEditor.hidden = false;
+      taskName.focus();
+    };
+
+    const deleteTask = async index => {
+      TASKS.splice(index, 1);
+      closeTaskEditor();
+      renderTaskList();
+      await refreshRoadmap();
+    };
+
+    const renderTaskList = () => {
+      taskList.replaceChildren();
+      TASKS.forEach((task, index) => {
+        const item = document.createElement("li");
+        const details = document.createElement("span");
+        details.className = "manager-details";
+        const ownerDetails = task.owner ? ` · ${task.owner}` : "";
+        details.textContent = `${task.name}: ${task.start} – ${task.end} (${statusLabel(normalizeStatus(task.status))}${ownerDetails})`;
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.textContent = "Edit";
+        edit.setAttribute("aria-label", `Edit ${task.name}`);
+        edit.addEventListener("click", () => openTaskEditor(index));
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Delete";
+        remove.setAttribute("aria-label", `Delete ${task.name}`);
+        remove.addEventListener("click", () => deleteTask(index));
+        item.append(details, edit, remove);
+        taskList.append(item);
+      });
+
+      if (!TASKS.length) {
+        const empty = document.createElement("li");
+        empty.textContent = "No Tasks yet.";
+        taskList.append(empty);
+      }
+    };
+
+    document.getElementById("add-task").addEventListener("click", () => openTaskEditor(null));
+    document.getElementById("cancel-task").addEventListener("click", closeTaskEditor);
+    taskEditor.addEventListener("submit", async event => {
+      event.preventDefault();
+      const name = taskName.value.trim();
+      const start = taskStart.value;
+      const end = taskEnd.value;
+      const status = taskStatus.value;
+      const owner = taskOwner.value.trim();
+
+      if (!name) {
+        taskFormError.textContent = "Name is required.";
+        taskFormError.hidden = false;
+        taskName.focus();
+        return;
+      }
+      if (!start || !end) {
+        taskFormError.textContent = "Start date and end date are required.";
+        taskFormError.hidden = false;
+        (!start ? taskStart : taskEnd).focus();
+        return;
+      }
+      if (end <= start) {
+        taskFormError.textContent = "End date must be after start date.";
+        taskFormError.hidden = false;
+        taskEnd.focus();
+        return;
+      }
+      if (!Object.hasOwn(STATUS_COLORS, status)) {
+        taskFormError.textContent = "Select a status from the available options.";
+        taskFormError.hidden = false;
+        taskStatus.focus();
+        return;
+      }
+
+      const task = { name, start, end, status };
+      if (owner) task.owner = owner;
+      if (editingTaskIndex === null) {
+        TASKS.push(task);
+      } else {
+        TASKS[editingTaskIndex] = task;
+      }
+      closeTaskEditor();
+      renderTaskList();
+      await refreshRoadmap();
+    });
+
+    renderTaskList();
+
     const openRoadmap = document.getElementById("open-roadmap");
     const saveRoadmap = document.getElementById("save-roadmap");
     const fileStatus = document.getElementById("file-status");
@@ -620,9 +772,11 @@
         roadmapFileHandle = fileHandle;
         closePiEditor();
         closeSprintEditor();
+        closeTaskEditor();
         hideDeleteWarning();
         renderPiList();
         renderSprintList();
+        renderTaskList();
         await refreshRoadmap();
         fileStatus.textContent = `Opened ${file.name}`;
       } catch (error) {
