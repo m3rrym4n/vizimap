@@ -48,9 +48,25 @@
       name: "Program Increments"
     };
 
+    const sprintTrace = {
+      type: "bar",
+      orientation: "h",
+      x: SPRINTS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
+      base: SPRINTS.map(({ start }) => start),
+      y: SPRINTS.map(() => "Sprints"),
+      text: SPRINTS.map(({ name }) => name),
+      textposition: "inside",
+      insidetextanchor: "middle",
+      customdata: SPRINTS.map(({ start, end }) => [start, end]),
+      hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
+      marker: { color: "#93c5fd" },
+      width: 0.45,
+      name: "Sprints"
+    };
+
     Plotly.newPlot(
       "roadmap-chart",
-      [programIncrementTrace],
+      [programIncrementTrace, sprintTrace],
       {
         title: "Product Roadmap",
         barmode: "overlay",
@@ -60,7 +76,7 @@
         },
         yaxis: {
           categoryorder: "array",
-          categoryarray: ["Program Increments"],
+          categoryarray: ["Program Increments", "Sprints"],
           autorange: "reversed",
           automargin: true
         }
