@@ -28,9 +28,17 @@
       { name: "Define roadmap", start: "2025-01-06", end: "2025-01-10", status: "Done", owner: "Stan" },
       { name: "Validate user needs", start: "2025-01-13", end: "2025-01-24", status: "In progress", owner: "Maya" },
       { name: "Prototype timeline", start: "2025-01-27", end: "2025-02-07", status: "Planned", owner: "Lee" },
-      { name: "Review prototype", start: "2025-02-10", end: "2025-02-14", status: "Planned", owner: "Stan" },
+      { name: "Review prototype", start: "2025-02-10", end: "2025-02-14", status: "Blocked", owner: "Stan" },
       { name: "Prepare pilot", start: "2025-02-17", end: "2025-03-07", status: "Planned", owner: "Maya" }
     ];
+
+    const STATUS_COLORS = {
+      planned: "#64748b",
+      in_progress: "#2563eb",
+      done: "#16a34a",
+      blocked: "#dc2626"
+    };
+    const UNKNOWN_STATUS_COLOR = "#a1a1aa";
 
     const programIncrementTrace = {
       type: "bar",
@@ -45,7 +53,8 @@
       hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
       marker: { color: "#2563eb" },
       width: 0.7,
-      name: "Program Increments"
+      name: "Program Increments",
+      showlegend: false
     };
 
     const sprintTrace = {
@@ -61,31 +70,52 @@
       hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
       marker: { color: "#93c5fd" },
       width: 0.45,
-      name: "Sprints"
+      name: "Sprints",
+      showlegend: false
     };
 
     const taskRowStart = 2.75;
     const taskRowPositions = TASKS.map((_, index) => taskRowStart + index);
 
-    const taskTrace = {
-      type: "bar",
-      orientation: "h",
-      x: TASKS.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
-      base: TASKS.map(({ start }) => start),
-      y: taskRowPositions,
-      customdata: TASKS.map(({ name, start, end, status, owner }) =>
-        [name, start, end, status, owner]
-      ),
-      hovertemplate: TASKS.map(({ owner }) =>
-        "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
-        "<br>Status: %{customdata[3]}" +
-        (owner ? "<br>Owner: %{customdata[4]}" : "") +
-        "<extra></extra>"
-      ),
-      marker: { color: "#475569" },
-      width: 0.6,
-      name: "Tasks"
+    const normalizeStatus = status => {
+      const key = String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+      return Object.hasOwn(STATUS_COLORS, key) ? key : "unknown";
     };
+
+    const statusLabel = status =>
+      status === "unknown"
+        ? "Unknown"
+        : status.replaceAll("_", " ").replace(/^./, letter => letter.toUpperCase());
+
+    const taskTraces = [
+      ...Object.entries(STATUS_COLORS),
+      ["unknown", UNKNOWN_STATUS_COLOR]
+    ].map(([statusKey, color]) => {
+      const tasksForStatus = TASKS
+        .map((task, index) => ({ task, rowPosition: taskRowPositions[index] }))
+        .filter(({ task }) => normalizeStatus(task.status) === statusKey);
+
+      return {
+        type: "bar",
+        orientation: "h",
+        x: tasksForStatus.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
+        base: tasksForStatus.map(({ task: { start } }) => start),
+        y: tasksForStatus.map(({ rowPosition }) => rowPosition),
+        customdata: tasksForStatus.map(({ task: { name, start, end, status, owner } }) =>
+          [name, start, end, status || "Unknown", owner]
+        ),
+        hovertemplate: tasksForStatus.map(({ task: { owner } }) =>
+          "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
+          "<br>Status: %{customdata[3]}" +
+          (owner ? "<br>Owner: %{customdata[4]}" : "") +
+          "<extra></extra>"
+        ),
+        marker: { color },
+        width: 0.6,
+        name: statusLabel(statusKey),
+        legendgroup: "task-status"
+      };
+    }).filter(({ x }) => x.length);
 
     const boundaryShapes = (items, line) => items.flatMap(({ start, end }) =>
       [start, end].map(date => ({
@@ -107,11 +137,12 @@
 
     Plotly.newPlot(
       "roadmap-chart",
-      [programIncrementTrace, sprintTrace, taskTrace],
+      [programIncrementTrace, sprintTrace, ...taskTraces],
       {
         title: "Product Roadmap",
         barmode: "overlay",
         shapes: alignmentGridlines,
+        legend: { title: { text: "Task status" } },
         xaxis: {
           type: "date",
           title: "Date"
