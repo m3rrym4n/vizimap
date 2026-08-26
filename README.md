@@ -1,4 +1,5 @@
-# Vizimap
+# <img width="2172" height="724" alt="vizimap-logo" src="https://github.com/user-attachments/assets/97bee4b9-fa90-4b26-802a-e096afb2482e" />
+
 
 A standalone, single-file HTML Gantt chart for product roadmaps — built to plan and present Program Increments, Sprints, and task activity in one clean view, and export it straight into a leadership brief.
 
