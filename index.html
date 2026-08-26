@@ -76,6 +76,18 @@
       <button id="open-roadmap" type="button">Open Roadmap</button>
       <button id="save-roadmap" type="button">Save</button>
       <p id="file-status" role="status" aria-live="polite"></p>
+      <section class="roadmap-manager" aria-labelledby="chart-settings-title">
+      <h2 id="chart-settings-title">Chart Settings</h2>
+      <form id="chart-settings-form" class="manager-editor">
+        <div class="manager-fields">
+          <label>Chart Title <input id="chart-title" name="chartTitle" type="text" required></label>
+          <label>X-axis Label <input id="x-axis-title" name="xAxisTitle" type="text" required></label>
+        </div>
+        <div class="manager-actions">
+          <button type="submit">Save changes</button>
+        </div>
+      </form>
+      </section>
       <section class="roadmap-manager" aria-labelledby="pi-manager-title">
       <h2 id="pi-manager-title">Program Increments</h2>
       <button id="add-pi" type="button">Add PI</button>
@@ -167,7 +179,10 @@
   </main>
 
   <script>
-    const CHART_TITLE = "Product Roadmap";
+    const DEFAULT_CHART_TITLE = "Product Roadmap";
+    const DEFAULT_X_AXIS_TITLE = "Date";
+    let CHART_TITLE = DEFAULT_CHART_TITLE;
+    let X_AXIS_TITLE = DEFAULT_X_AXIS_TITLE;
 
     let PROGRAM_INCREMENTS = [
       { name: "PI-1", start: "2025-01-06", end: "2025-03-28" },
@@ -404,7 +419,7 @@
         annotations: descriptionAnnotations,
         xaxis: {
           type: "date",
-          title: "Date",
+          title: X_AXIS_TITLE,
           rangeslider: { visible: true }
         },
         yaxis: {
@@ -485,6 +500,24 @@
       await renderChart();
       tickMode.dispatchEvent(new Event("change"));
     };
+
+    const chartSettingsForm = document.getElementById("chart-settings-form");
+    const chartTitle = document.getElementById("chart-title");
+    const xAxisTitle = document.getElementById("x-axis-title");
+
+    const renderChartSettings = () => {
+      chartTitle.value = CHART_TITLE;
+      xAxisTitle.value = X_AXIS_TITLE;
+    };
+
+    chartSettingsForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      CHART_TITLE = chartTitle.value;
+      X_AXIS_TITLE = xAxisTitle.value;
+      await refreshRoadmap();
+    });
+
+    renderChartSettings();
 
     const hideDeleteWarning = () => {
       piDeleteWarning.hidden = true;
@@ -1136,6 +1169,12 @@
         SPRINTS = roadmap.sprints;
         LANES = roadmap.lanes;
         TASKS = roadmap.tasks;
+        CHART_TITLE = typeof roadmap.chartTitle === "string"
+          ? roadmap.chartTitle
+          : DEFAULT_CHART_TITLE;
+        X_AXIS_TITLE = typeof roadmap.xAxisTitle === "string"
+          ? roadmap.xAxisTitle
+          : DEFAULT_X_AXIS_TITLE;
         roadmapFileHandle = fileHandle;
         closePiEditor();
         closeSprintEditor();
@@ -1147,6 +1186,7 @@
         renderSprintList();
         renderLaneList();
         renderTaskList();
+        renderChartSettings();
         await refreshRoadmap();
         fileStatus.textContent = `Opened ${file.name}`;
       } catch (error) {
@@ -1170,7 +1210,9 @@
           programIncrements: PROGRAM_INCREMENTS,
           sprints: SPRINTS,
           lanes: LANES,
-          tasks: TASKS
+          tasks: TASKS,
+          chartTitle: CHART_TITLE,
+          xAxisTitle: X_AXIS_TITLE
         }, null, 2) + "\n");
         await writable.close();
         roadmapFileHandle = fileHandle;
