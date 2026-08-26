@@ -64,12 +64,31 @@
       name: "Sprints"
     };
 
+    const boundaryShapes = (items, line) => items.flatMap(({ start, end }) =>
+      [start, end].map(date => ({
+        type: "line",
+        xref: "x",
+        yref: "paper",
+        x0: date,
+        x1: date,
+        y0: 0,
+        y1: 1,
+        line
+      }))
+    );
+
+    const alignmentGridlines = [
+      ...boundaryShapes(SPRINTS, { color: "#cbd5e1", width: 1, dash: "dot" }),
+      ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
+    ];
+
     Plotly.newPlot(
       "roadmap-chart",
       [programIncrementTrace, sprintTrace],
       {
         title: "Product Roadmap",
         barmode: "overlay",
+        shapes: alignmentGridlines,
         xaxis: {
           type: "date",
           title: "Date"
