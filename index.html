@@ -7,7 +7,7 @@
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; color: #172033; }
-    main { margin: 0 auto; max-width: 1200px; padding: 1rem; }
+    main { padding: 1rem; }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
     .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
@@ -64,7 +64,7 @@
       </select>
       <button id="export-png" type="button">Export PNG</button>
       <div class="chart-container">
-        <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
+        <div id="roadmap-chart" style="width: 100%; min-height: 640px;"></div>
         <aside id="task-description-overlay" class="task-description-overlay" role="dialog" aria-labelledby="task-description-title" hidden>
           <button id="task-description-close" class="task-description-close" type="button" aria-label="Close task description">Close</button>
           <h2 id="task-description-title"></h2>
@@ -159,6 +159,8 @@
   </main>
 
   <script>
+    const CHART_TITLE = "Product Roadmap";
+
     let PROGRAM_INCREMENTS = [
       { name: "PI-1", start: "2025-01-06", end: "2025-03-28" },
       { name: "PI-2", start: "2025-03-31", end: "2025-06-20" }
@@ -276,6 +278,9 @@
 
     showChart.addEventListener("click", () => setView("chart"));
     showConfigure.addEventListener("click", () => setView("configure"));
+    window.addEventListener("resize", () => {
+      if (!chartView.hidden && chartReady) chartReady.then(() => Plotly.Plots.resize(chart));
+    });
 
     const renderChart = () => {
       const laneRowPositions = new Map(
@@ -370,7 +375,8 @@
           ...taskTraces
         ],
         {
-        title: "Product Roadmap",
+        title: CHART_TITLE,
+        height: Math.max(640, 370 + LANES.length * 70),
         barmode: "overlay",
         shapes: [...alignmentGridlines, todayLine],
         legend: { title: { text: "Task status" } },
