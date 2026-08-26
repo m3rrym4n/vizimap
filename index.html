@@ -24,6 +24,28 @@
     .manager-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
     .form-error, .delete-warning { color: #b91c1c; }
     .delete-warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.4rem; margin-top: 1rem; padding: 0.75rem; }
+    .chart-container { position: relative; }
+    .task-description-overlay {
+      background: white;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.5rem;
+      box-shadow: 0 10px 25px rgb(15 23 42 / 20%);
+      box-sizing: border-box;
+      left: 50%;
+      max-height: calc(100% - 2rem);
+      max-width: 32rem;
+      overflow: auto;
+      padding: 1rem 3rem 1rem 1rem;
+      position: absolute;
+      top: 1rem;
+      transform: translateX(-50%);
+      width: calc(100% - 2rem);
+      z-index: 10;
+    }
+    .task-description-overlay[hidden] { display: none; }
+    .task-description-overlay h2 { font-size: 1.2rem; margin: 0 0 0.75rem; }
+    .task-description-overlay p { margin: 0; white-space: pre-wrap; }
+    .task-description-close { position: absolute; right: 0.75rem; top: 0.75rem; }
   </style>
 </head>
 <body>
@@ -41,7 +63,14 @@
         <option value="pi">PI</option>
       </select>
       <button id="export-png" type="button">Export PNG</button>
-      <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
+      <div class="chart-container">
+        <div id="roadmap-chart" style="width: 100%; min-height: 480px;"></div>
+        <aside id="task-description-overlay" class="task-description-overlay" role="dialog" aria-labelledby="task-description-title" hidden>
+          <button id="task-description-close" class="task-description-close" type="button" aria-label="Close task description">Close</button>
+          <h2 id="task-description-title"></h2>
+          <p id="task-description-content"></p>
+        </aside>
+      </div>
     </section>
     <section id="configure-view" aria-label="Configure view" hidden>
       <button id="open-roadmap" type="button">Open Roadmap</button>
@@ -207,7 +236,29 @@
     };
 
     const chart = document.getElementById("roadmap-chart");
+    const taskDescriptionOverlay = document.getElementById("task-description-overlay");
+    const taskDescriptionTitle = document.getElementById("task-description-title");
+    const taskDescriptionContent = document.getElementById("task-description-content");
+    const taskDescriptionClose = document.getElementById("task-description-close");
     let chartReady;
+
+    const closeTaskDescription = () => {
+      taskDescriptionOverlay.hidden = true;
+    };
+
+    const showTaskDescription = task => {
+      taskDescriptionTitle.textContent = task.name;
+      taskDescriptionContent.textContent = task.description || "No description available.";
+      taskDescriptionOverlay.hidden = false;
+      taskDescriptionClose.focus();
+    };
+
+    taskDescriptionClose.addEventListener("click", closeTaskDescription);
+    const handleChartClick = event => {
+      const point = event.points?.[0];
+      if (point?.data?.meta !== "task") return;
+      showTaskDescription(point.customdata[5]);
+    };
 
     const chartView = document.getElementById("chart-view");
     const configureView = document.getElementById("configure-view");
@@ -258,12 +309,13 @@
         const statusName = statusLabel(statusKey);
         const barTrace = {
           type: "bar",
+          meta: "task",
           orientation: "h",
           x: regularTasks.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
           base: regularTasks.map(({ task: { start } }) => start),
           y: regularTasks.map(({ rowPosition }) => rowPosition),
-          customdata: regularTasks.map(({ task: { name, start, end, status, owner } }) =>
-            [name, start, end, status || "Unknown", owner]
+          customdata: regularTasks.map(({ task }) =>
+            [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
           hovertemplate: regularTasks.map(({ task: { owner } }) =>
             "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
@@ -278,18 +330,19 @@
         };
         const milestoneTrace = {
           type: "scatter",
+          meta: "task",
           mode: "markers+text",
           x: milestones.map(({ task: { start } }) => start),
           y: milestones.map(({ rowPosition }) => rowPosition),
           text: milestones.map(({ task: { name } }) => name),
           textposition: "top center",
-          customdata: milestones.map(({ task: { name, start, status, owner } }) =>
-            [name, start, status || "Unknown", owner]
+          customdata: milestones.map(({ task }) =>
+            [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
           hovertemplate: milestones.map(({ task: { owner } }) =>
             "%{customdata[0]}<br>Date: %{customdata[1]}" +
-            "<br>Status: %{customdata[2]}" +
-            (owner ? "<br>Owner: %{customdata[3]}" : "") +
+            "<br>Status: %{customdata[3]}" +
+            (owner ? "<br>Owner: %{customdata[4]}" : "") +
             "<extra></extra>"
           ),
           marker: { color, size: 14, symbol: "diamond" },
@@ -339,7 +392,7 @@
       return chartReady;
     };
 
-    renderChart();
+    renderChart().then(() => chart.on("plotly_click", handleChartClick));
 
     const exportPng = document.getElementById("export-png");
     exportPng.addEventListener("click", async () => {
