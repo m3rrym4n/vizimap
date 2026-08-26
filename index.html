@@ -122,7 +122,8 @@
       { name: "Validate user needs", start: "2025-01-13", end: "2025-01-24", status: "In progress", owner: "Maya", lane: "Product" },
       { name: "Prototype timeline", start: "2025-01-27", end: "2025-02-07", status: "Planned", owner: "Lee", lane: "Design" },
       { name: "Review prototype", start: "2025-02-10", end: "2025-02-14", status: "Blocked", owner: "Stan", lane: "Design" },
-      { name: "Prepare pilot", start: "2025-02-17", end: "2025-03-07", status: "Planned", owner: "Maya", lane: "Engineering" }
+      { name: "Prepare pilot", start: "2025-02-17", end: "2025-03-07", status: "Planned", owner: "Maya", lane: "Engineering" },
+      { name: "Pilot Launch", start: "2025-03-10", end: "2025-03-10", status: "Planned", owner: "Maya", lane: "Engineering" }
     ];
 
     const STATUS_COLORS = {
@@ -201,21 +202,23 @@
       const taskTraces = [
         ...Object.entries(STATUS_COLORS),
         ["unknown", UNKNOWN_STATUS_COLOR]
-      ].map(([statusKey, color]) => {
+      ].flatMap(([statusKey, color]) => {
         const tasksForStatus = TASKS
           .map(task => ({ task, rowPosition: laneRowPositions.get(task.lane) }))
           .filter(({ task }) => normalizeStatus(task.status) === statusKey);
-
-        return {
+        const regularTasks = tasksForStatus.filter(({ task }) => task.start !== task.end);
+        const milestones = tasksForStatus.filter(({ task }) => task.start === task.end);
+        const statusName = statusLabel(statusKey);
+        const barTrace = {
           type: "bar",
           orientation: "h",
-          x: tasksForStatus.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
-          base: tasksForStatus.map(({ task: { start } }) => start),
-          y: tasksForStatus.map(({ rowPosition }) => rowPosition),
-          customdata: tasksForStatus.map(({ task: { name, start, end, status, owner } }) =>
+          x: regularTasks.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
+          base: regularTasks.map(({ task: { start } }) => start),
+          y: regularTasks.map(({ rowPosition }) => rowPosition),
+          customdata: regularTasks.map(({ task: { name, start, end, status, owner } }) =>
             [name, start, end, status || "Unknown", owner]
           ),
-          hovertemplate: tasksForStatus.map(({ task: { owner } }) =>
+          hovertemplate: regularTasks.map(({ task: { owner } }) =>
             "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
             "<br>Status: %{customdata[3]}" +
             (owner ? "<br>Owner: %{customdata[4]}" : "") +
@@ -223,10 +226,37 @@
           ),
           marker: { color },
           width: 0.6,
-          name: statusLabel(statusKey),
+          name: statusName,
           legendgroup: "task-status"
         };
-      }).filter(({ x }) => x.length);
+        const milestoneTrace = {
+          type: "scatter",
+          mode: "markers+text",
+          x: milestones.map(({ task: { start } }) => start),
+          y: milestones.map(({ rowPosition }) => rowPosition),
+          text: milestones.map(({ task: { name } }) => name),
+          textposition: "top center",
+          customdata: milestones.map(({ task: { name, start, status, owner } }) =>
+            [name, start, status || "Unknown", owner]
+          ),
+          hovertemplate: milestones.map(({ task: { owner } }) =>
+            "%{customdata[0]}<br>Date: %{customdata[1]}" +
+            "<br>Status: %{customdata[2]}" +
+            (owner ? "<br>Owner: %{customdata[3]}" : "") +
+            "<extra></extra>"
+          ),
+          marker: { color, size: 14, symbol: "diamond" },
+          name: statusName,
+          legendgroup: "task-status",
+          showlegend: !regularTasks.length,
+          cliponaxis: false
+        };
+
+        return [
+          ...(regularTasks.length ? [barTrace] : []),
+          ...(milestones.length ? [milestoneTrace] : [])
+        ];
+      });
       const alignmentGridlines = [
         ...boundaryShapes(SPRINTS, { color: "#cbd5e1", width: 1, dash: "dot" }),
         ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
