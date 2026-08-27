@@ -28,7 +28,7 @@ Feature-complete and in active use. The core tool — roadmap authoring, lanes, 
 **Descriptions, three ways**
 - Hover tooltip — a quick-glance summary
 - Click-to-overlay — a dismissible on-chart dialog with the full text
-- Inline annotation (above/below a task or milestone) — baked directly into the chart so it's still visible in an exported PNG, unlike the other two
+- Chart-baked display — place a description above or below a task, or inline inside a task bar, so it remains visible in an exported PNG (milestones fall back above the diamond for inline display)
 
 **Presentation**
 - A custom Vizimap visual theme (matching the logo palette), plus ten of Plotly's built-in themes, all selectable from Chart Settings

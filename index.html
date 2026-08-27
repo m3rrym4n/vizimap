@@ -296,6 +296,7 @@
               <option value="hidden">Hidden</option>
               <option value="above">Above</option>
               <option value="below">Below</option>
+              <option value="inline">Inline</option>
             </select>
           </label>
           <label id="task-milestone-position-field" hidden>Milestone position
@@ -406,7 +407,7 @@
     ];
 
     const TASK_STATUSES = ["planned", "in_progress", "done", "blocked"];
-    const DESCRIPTION_POSITIONS = ["hidden", "above", "below"];
+    const DESCRIPTION_POSITIONS = ["hidden", "above", "below", "inline"];
     const MILESTONE_POSITIONS = ["on", "above", "below"];
     const MILESTONE_OFFSET = 0.38;
     const DEFAULT_TASK_COLOR = "#2563eb";
@@ -587,8 +588,11 @@
         const descriptionPosition = descriptionPositionForTask(task);
         const description = String(task.description || "").trim();
         if (descriptionPosition === "hidden" || !description) return [];
+        const isMilestone = task.start === task.end;
+        if (descriptionPosition === "inline" && !isMilestone) return [];
         const startTime = Date.parse(task.start);
         const endTime = Date.parse(task.end);
+        const annotationPosition = descriptionPosition === "inline" ? "above" : descriptionPosition;
         return [{
           x: new Date(startTime + (endTime - startTime) / 2).toISOString(),
           y: rowPosition,
@@ -597,8 +601,8 @@
           text: escapeAnnotationText(description),
           showarrow: false,
           xanchor: "center",
-          yanchor: descriptionPosition === "above" ? "bottom" : "top",
-          yshift: descriptionPosition === "above" ? 18 : -18,
+          yanchor: annotationPosition === "above" ? "bottom" : "top",
+          yshift: annotationPosition === "above" ? 18 : -18,
           align: "center"
         }];
       });
@@ -610,6 +614,15 @@
           x: regularTasks.map(({ task: { start, end } }) => Date.parse(end) - Date.parse(start)),
           base: regularTasks.map(({ task: { start } }) => start),
           y: regularTasks.map(({ rowPosition }) => rowPosition),
+          text: regularTasks.map(({ task }) => {
+            const description = String(task.description || "").trim();
+            return descriptionPositionForTask(task) === "inline" && description
+              ? `${escapeAnnotationText(task.name)}<br>${escapeAnnotationText(description)}`
+              : "";
+          }),
+          textposition: "inside",
+          insidetextanchor: "middle",
+          textangle: 0,
           customdata: regularTasks.map(({ task }) =>
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
@@ -1332,8 +1345,8 @@
       if (!isMilestone) taskMilestonePosition.value = "on";
     };
 
-    taskStart.addEventListener("change", updateMilestonePositionVisibility);
-    taskEnd.addEventListener("change", updateMilestonePositionVisibility);
+    taskStart.addEventListener("input", updateMilestonePositionVisibility);
+    taskEnd.addEventListener("input", updateMilestonePositionVisibility);
 
     const closeTaskEditor = () => {
       editingTaskIndex = null;
