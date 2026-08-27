@@ -56,6 +56,7 @@
     .manager-editor[hidden] { display: none; }
     .manager-fields { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .manager-fields label { display: grid; gap: 0.25rem; }
+    .manager-fields label[hidden] { display: none; }
     .manager-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
     .form-error, .delete-warning { color: #b91c1c; }
     .delete-warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.4rem; margin-top: 1rem; padding: 0.75rem; }
@@ -216,6 +217,13 @@
               <option value="below">Below</option>
             </select>
           </label>
+          <label id="task-milestone-position-field" hidden>Milestone position
+            <select id="task-milestone-position" name="milestonePosition">
+              <option value="on">On lane</option>
+              <option value="above">Above lane</option>
+              <option value="below">Below lane</option>
+            </select>
+          </label>
         </div>
         <p id="task-form-error" class="form-error" role="alert" hidden></p>
         <div class="manager-actions">
@@ -318,6 +326,8 @@
 
     const TASK_STATUSES = ["planned", "in_progress", "done", "blocked"];
     const DESCRIPTION_POSITIONS = ["hidden", "above", "below"];
+    const MILESTONE_POSITIONS = ["on", "above", "below"];
+    const MILESTONE_OFFSET = 0.38;
     const DEFAULT_TASK_COLOR = "#2563eb";
     const VIZIMAP_COLORS = {
       navy: "#0b1e3b",
@@ -330,6 +340,8 @@
       /^#[0-9a-f]{6}$/i.test(task.color || "") ? task.color : DEFAULT_TASK_COLOR;
     const descriptionPositionForTask = task =>
       DESCRIPTION_POSITIONS.includes(task.descriptionPosition) ? task.descriptionPosition : "hidden";
+    const milestonePositionForTask = task =>
+      MILESTONE_POSITIONS.includes(task.milestonePosition) ? task.milestonePosition : "on";
     const escapeAnnotationText = text => text
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
@@ -450,6 +462,13 @@
       }));
       const regularTasks = tasksWithRows.filter(({ task }) => task.start !== task.end);
       const milestones = tasksWithRows.filter(({ task }) => task.start === task.end);
+      const positionedMilestones = milestones.map(({ task, rowPosition }) => {
+        const position = milestonePositionForTask(task);
+        const offset = position === "above"
+          ? -MILESTONE_OFFSET
+          : position === "below" ? MILESTONE_OFFSET : 0;
+        return { task, rowPosition, markerPosition: rowPosition + offset, position };
+      });
       const rowLabelAnnotations = isVizimapTheme
         ? [
             { text: "PROGRAM INCREMENTS", y: 0, bgcolor: VIZIMAP_COLORS.navy },
@@ -535,25 +554,27 @@
           cliponaxis: false,
           showlegend: false
         }] : []),
-        ...(milestones.length ? [{
+        ...(positionedMilestones.length ? [{
           type: "scatter",
           meta: "task",
           mode: "markers+text",
-          x: milestones.map(({ task: { start } }) => start),
-          y: milestones.map(({ rowPosition }) => rowPosition),
-          text: milestones.map(({ task: { name, start } }) => `${name}<br>${start}`),
-          textposition: "top center",
-          customdata: milestones.map(({ task }) =>
+          x: positionedMilestones.map(({ task: { start } }) => start),
+          y: positionedMilestones.map(({ markerPosition }) => markerPosition),
+          text: positionedMilestones.map(({ task: { name, start } }) => `${name}<br>${start}`),
+          textposition: positionedMilestones.map(({ position }) =>
+            position === "below" ? "bottom center" : "top center"
+          ),
+          customdata: positionedMilestones.map(({ task }) =>
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
-          hovertemplate: milestones.map(({ task: { owner } }) =>
+          hovertemplate: positionedMilestones.map(({ task: { owner } }) =>
             "%{customdata[0]}<br>Date: %{customdata[1]}" +
             "<br>Status: %{customdata[3]}" +
             (owner ? "<br>Owner: %{customdata[4]}" : "") +
             "<extra></extra>"
           ),
           marker: {
-            color: milestones.map(({ task }) => colorForTask(task)),
+            color: positionedMilestones.map(({ task }) => colorForTask(task)),
             size: 14,
             symbol: "diamond",
             line: isVizimapTheme ? { color: "#ffffff", width: 2 } : undefined
@@ -573,6 +594,19 @@
           dash: "dash"
         })
       ];
+      const milestoneConnectors = positionedMilestones
+        .filter(({ position }) => position !== "on")
+        .map(({ task, rowPosition, markerPosition }) => ({
+          type: "line",
+          xref: "x",
+          yref: "y",
+          x0: task.start,
+          x1: task.start,
+          y0: rowPosition,
+          y1: markerPosition,
+          line: { color: colorForTask(task), width: 1.5 },
+          layer: "below"
+        }));
       const piColors = PROGRAM_INCREMENTS.map((_, index) =>
         VIZIMAP_COLORS.pi[index % VIZIMAP_COLORS.pi.length]
       );
@@ -633,7 +667,7 @@
         margin: isVizimapTheme ? { l: 180, r: 48, t: 92, b: 92, pad: 4 } : undefined,
         barmode: "overlay",
         showlegend: false,
-        shapes: [...alignmentGridlines, todayLine],
+        shapes: [...alignmentGridlines, ...milestoneConnectors, todayLine],
         annotations: [...rowLabelAnnotations, ...descriptionAnnotations],
         xaxis: {
           type: "date",
@@ -1180,6 +1214,8 @@
     const taskLane = document.getElementById("task-lane");
     const taskDescription = document.getElementById("task-description");
     const taskDescriptionPosition = document.getElementById("task-description-position");
+    const taskMilestonePositionField = document.getElementById("task-milestone-position-field");
+    const taskMilestonePosition = document.getElementById("task-milestone-position");
     const taskFormError = document.getElementById("task-form-error");
     const saveTask = document.getElementById("save-task");
     let editingTaskIndex = null;
@@ -1207,6 +1243,15 @@
       });
     };
 
+    const updateMilestonePositionVisibility = () => {
+      const isMilestone = Boolean(taskStart.value) && taskStart.value === taskEnd.value;
+      taskMilestonePositionField.hidden = !isMilestone;
+      if (!isMilestone) taskMilestonePosition.value = "on";
+    };
+
+    taskStart.addEventListener("change", updateMilestonePositionVisibility);
+    taskEnd.addEventListener("change", updateMilestonePositionVisibility);
+
     const closeTaskEditor = () => {
       editingTaskIndex = null;
       taskEditor.reset();
@@ -1233,9 +1278,11 @@
         taskColor.value = task.color || DEFAULT_TASK_COLOR;
         taskDescription.value = task.description || "";
         taskDescriptionPosition.value = descriptionPositionForTask(task);
+        taskMilestonePosition.value = milestonePositionForTask(task);
         saveTask.textContent = "Save changes";
       }
 
+      updateMilestonePositionVisibility();
       taskEditor.hidden = false;
       taskName.focus();
     };
@@ -1289,6 +1336,7 @@
       const lane = taskLane.value;
       const description = taskDescription.value.trim();
       const descriptionPosition = taskDescriptionPosition.value;
+      const milestonePosition = taskMilestonePosition.value;
 
       if (!name) {
         taskFormError.textContent = "Name is required.";
@@ -1327,7 +1375,14 @@
         taskDescriptionPosition.focus();
         return;
       }
+      if (start === end && !MILESTONE_POSITIONS.includes(milestonePosition)) {
+        taskFormError.textContent = "Select a milestone position.";
+        taskFormError.hidden = false;
+        taskMilestonePosition.focus();
+        return;
+      }
       const task = { name, start, end, status, lane, color, descriptionPosition };
+      if (start === end) task.milestonePosition = milestonePosition;
       if (owner) task.owner = owner;
       if (description) task.description = description;
       if (editingTaskIndex === null) {
