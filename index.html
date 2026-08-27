@@ -7,12 +7,46 @@
   <title>Vizimap</title>
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 0; color: #172033; }
+    body {
+      background: #f4f7fb;
+      color: #172033;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+      margin: 0;
+    }
     main { padding: 1rem; }
+    h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.035em; }
     button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
-    .view-toggle { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-    .view-toggle button[aria-pressed="true"] { background: #2563eb; color: white; }
+    .view-toggle {
+      align-items: center;
+      background: #dfe8f2;
+      border: 1px solid #c7d4e2;
+      border-radius: 0.75rem;
+      box-shadow: inset 0 1px 2px rgb(11 30 59 / 8%);
+      display: inline-flex;
+      gap: 0.2rem;
+      margin-bottom: 1rem;
+      padding: 0.25rem;
+    }
+    .view-toggle button {
+      background: transparent;
+      border: 0;
+      border-radius: 0.55rem;
+      color: #52677d;
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.025em;
+      min-width: 7.5rem;
+      padding: 0.65rem 1.15rem;
+      transition: background-color 150ms ease, box-shadow 150ms ease, color 150ms ease;
+    }
+    .view-toggle button:hover { color: #0b1e3b; }
+    .view-toggle button:focus-visible { outline: 3px solid rgb(8 119 220 / 35%); outline-offset: 2px; }
+    .view-toggle button[aria-pressed="true"] {
+      background: linear-gradient(135deg, #173f8a, #7651d8);
+      box-shadow: 0 2px 7px rgb(23 63 138 / 28%);
+      color: white;
+    }
     .roadmap-manager { border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-top: 1rem; padding: 1rem; }
     .roadmap-manager h2 { display: inline-block; font-size: 1.2rem; margin: 0 1rem 0 0; }
     .manager-list { list-style: none; margin: 1rem 0 0; padding: 0; }
@@ -204,15 +238,19 @@
       vizimap: {
         layout: {
           colorway: ["#0877dc", "#7651d8", "#08b9ad", "#08a9d9", "#173f8a"],
-          font: { family: "Inter, Aptos, Segoe UI, sans-serif", color: "#0b1e3b", size: 14 },
+          font: {
+            family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif",
+            color: "#0b1e3b",
+            size: 14
+          },
           hoverlabel: {
             align: "left",
             bgcolor: "#0b1e3b",
             bordercolor: "#0b1e3b",
-            font: { color: "#ffffff", family: "Inter, Aptos, Segoe UI, sans-serif" }
+            font: { color: "#ffffff", family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif" }
           },
-          paper_bgcolor: "#ffffff",
-          plot_bgcolor: "#ffffff",
+          paper_bgcolor: "#eef3f8",
+          plot_bgcolor: "#f8fafc",
           bargap: 0.28,
           xaxis: {
             gridcolor: "#dbe7f0",
@@ -221,18 +259,19 @@
             showline: true,
             ticks: "outside",
             tickcolor: "#9db3c7",
+            tickfont: { color: "#2c4661", size: 13 },
             title: { standoff: 18 },
             zeroline: false
           },
           yaxis: {
-            gridcolor: "#edf3f7",
+            gridcolor: "#dfe8f0",
             gridwidth: 1,
             showgrid: true,
             ticks: "",
             zeroline: false
           },
           annotationdefaults: {
-            font: { color: "#0b1e3b", family: "Inter, Aptos, Segoe UI, sans-serif", size: 12 }
+            font: { color: "#0b1e3b", family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif", size: 12 }
           }
         }
       },
@@ -411,6 +450,29 @@
       }));
       const regularTasks = tasksWithRows.filter(({ task }) => task.start !== task.end);
       const milestones = tasksWithRows.filter(({ task }) => task.start === task.end);
+      const rowLabelAnnotations = isVizimapTheme
+        ? [
+            { text: "PROGRAM INCREMENTS", y: 0, bgcolor: VIZIMAP_COLORS.navy },
+            { text: "SPRINTS", y: 1, bgcolor: "#28445f" },
+            ...LANES.map(({ name }, index) => ({
+              text: escapeAnnotationText(name),
+              y: taskRowStart + index,
+              bgcolor: index % 2 ? "#0877dc" : "#173f8a"
+            }))
+          ].map(label => ({
+            ...label,
+            x: -0.012,
+            xref: "paper",
+            yref: "y",
+            showarrow: false,
+            xanchor: "right",
+            yanchor: "middle",
+            align: "right",
+            bordercolor: label.bgcolor,
+            borderpad: 7,
+            font: { color: "#ffffff", size: 11, family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif" }
+          }))
+        : [];
       const descriptionAnnotations = tasksWithRows.flatMap(({ task, rowPosition }) => {
         const descriptionPosition = descriptionPositionForTask(task);
         const description = String(task.description || "").trim();
@@ -453,6 +515,25 @@
             line: isVizimapTheme ? { color: "rgba(11, 30, 59, 0.14)", width: 1 } : undefined
           },
           width: 0.6
+        }] : []),
+        ...(isVizimapTheme && regularTasks.length ? [{
+          type: "scatter",
+          meta: "task",
+          mode: "markers",
+          x: regularTasks.map(({ task: { end } }) => end),
+          y: regularTasks.map(({ rowPosition }) => rowPosition),
+          customdata: regularTasks.map(({ task }) =>
+            [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
+          ),
+          hoverinfo: "skip",
+          marker: {
+            color: regularTasks.map(({ task }) => colorForTask(task)),
+            line: { color: "rgba(255, 255, 255, 0.72)", width: 1 },
+            size: 18,
+            symbol: "triangle-right"
+          },
+          cliponaxis: false,
+          showlegend: false
         }] : []),
         ...(milestones.length ? [{
           type: "scatter",
@@ -541,14 +622,19 @@
           text: CHART_TITLE,
           x: 0.5,
           xanchor: "center",
-          font: isVizimapTheme ? { color: VIZIMAP_COLORS.navy, size: 26 } : undefined
+          font: isVizimapTheme ? {
+            color: VIZIMAP_COLORS.navy,
+            family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif",
+            size: 30,
+            weight: 800
+          } : undefined
         },
         height: Math.max(640, 370 + LANES.length * 70),
-        margin: isVizimapTheme ? { l: 140, r: 48, t: 92, b: 92, pad: 4 } : undefined,
+        margin: isVizimapTheme ? { l: 180, r: 48, t: 92, b: 92, pad: 4 } : undefined,
         barmode: "overlay",
         showlegend: false,
         shapes: [...alignmentGridlines, todayLine],
-        annotations: descriptionAnnotations,
+        annotations: [...rowLabelAnnotations, ...descriptionAnnotations],
         xaxis: {
           type: "date",
           title: X_AXIS_TITLE,
@@ -557,7 +643,9 @@
         yaxis: {
           tickmode: "array",
           tickvals: [0, 1, ...laneRowPositions.values()],
-          ticktext: ["Program Increments", "Sprints", ...LANES.map(({ name }) => name)],
+          ticktext: isVizimapTheme
+            ? ["", "", ...LANES.map(() => "")]
+            : ["Program Increments", "Sprints", ...LANES.map(({ name }) => name)],
           range: [taskRowStart + LANES.length - 0.4, -0.6],
           automargin: true
         }
