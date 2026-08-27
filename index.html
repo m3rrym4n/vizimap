@@ -306,6 +306,15 @@
               <option value="below">Below lane</option>
             </select>
           </label>
+          <label id="task-milestone-shape-field" hidden>Milestone shape
+            <select id="task-milestone-shape" name="milestoneShape">
+              <option value="octagon">Octagon</option>
+              <option value="star">Star</option>
+              <option value="triangle">Triangle</option>
+              <option value="diamond" selected>Diamond</option>
+              <option value="circle">Circle</option>
+            </select>
+          </label>
         </div>
         <p id="task-form-error" class="form-error" role="alert" hidden></p>
         <div class="manager-actions">
@@ -409,6 +418,7 @@
     const TASK_STATUSES = ["planned", "in_progress", "done", "blocked"];
     const DESCRIPTION_POSITIONS = ["hidden", "above", "below", "inline"];
     const MILESTONE_POSITIONS = ["on", "above", "below"];
+    const MILESTONE_SHAPES = ["diamond", "circle", "star", "triangle", "octagon"];
     const MILESTONE_OFFSET = 0.38;
     const DEFAULT_TASK_COLOR = "#2563eb";
     const VIZIMAP_COLORS = {
@@ -424,6 +434,10 @@
       DESCRIPTION_POSITIONS.includes(task.descriptionPosition) ? task.descriptionPosition : "hidden";
     const milestonePositionForTask = task =>
       MILESTONE_POSITIONS.includes(task.milestonePosition) ? task.milestonePosition : "on";
+    const milestoneShapeForTask = task =>
+      MILESTONE_SHAPES.includes(task.milestoneShape) ? task.milestoneShape : "diamond";
+    const plotlySymbolForMilestone = task =>
+      milestoneShapeForTask(task) === "triangle" ? "triangle-up" : milestoneShapeForTask(task);
     const escapeAnnotationText = text => text
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
@@ -661,7 +675,7 @@
           marker: {
             color: positionedMilestones.map(({ task }) => colorForTask(task)),
             size: 14,
-            symbol: "diamond",
+            symbol: positionedMilestones.map(({ task }) => plotlySymbolForMilestone(task)),
             line: isVizimapTheme ? { color: "#ffffff", width: 2 } : undefined
           },
           cliponaxis: false
@@ -1312,6 +1326,8 @@
     const taskDescriptionPosition = document.getElementById("task-description-position");
     const taskMilestonePositionField = document.getElementById("task-milestone-position-field");
     const taskMilestonePosition = document.getElementById("task-milestone-position");
+    const taskMilestoneShapeField = document.getElementById("task-milestone-shape-field");
+    const taskMilestoneShape = document.getElementById("task-milestone-shape");
     const taskFormError = document.getElementById("task-form-error");
     const saveTask = document.getElementById("save-task");
     let editingTaskIndex = null;
@@ -1339,14 +1355,18 @@
       });
     };
 
-    const updateMilestonePositionVisibility = () => {
+    const updateMilestoneFieldsVisibility = () => {
       const isMilestone = Boolean(taskStart.value) && taskStart.value === taskEnd.value;
       taskMilestonePositionField.hidden = !isMilestone;
-      if (!isMilestone) taskMilestonePosition.value = "on";
+      taskMilestoneShapeField.hidden = !isMilestone;
+      if (!isMilestone) {
+        taskMilestonePosition.value = "on";
+        taskMilestoneShape.value = "diamond";
+      }
     };
 
-    taskStart.addEventListener("input", updateMilestonePositionVisibility);
-    taskEnd.addEventListener("input", updateMilestonePositionVisibility);
+    taskStart.addEventListener("input", updateMilestoneFieldsVisibility);
+    taskEnd.addEventListener("input", updateMilestoneFieldsVisibility);
 
     const closeTaskEditor = () => {
       editingTaskIndex = null;
@@ -1375,10 +1395,11 @@
         taskDescription.value = task.description || "";
         taskDescriptionPosition.value = descriptionPositionForTask(task);
         taskMilestonePosition.value = milestonePositionForTask(task);
+        taskMilestoneShape.value = milestoneShapeForTask(task);
         saveTask.textContent = "Save changes";
       }
 
-      updateMilestonePositionVisibility();
+      updateMilestoneFieldsVisibility();
       taskEditor.hidden = false;
       taskName.focus();
     };
@@ -1433,6 +1454,7 @@
       const description = taskDescription.value.trim();
       const descriptionPosition = taskDescriptionPosition.value;
       const milestonePosition = taskMilestonePosition.value;
+      const milestoneShape = taskMilestoneShape.value;
 
       if (!name) {
         taskFormError.textContent = "Name is required.";
@@ -1477,8 +1499,17 @@
         taskMilestonePosition.focus();
         return;
       }
+      if (start === end && !MILESTONE_SHAPES.includes(milestoneShape)) {
+        taskFormError.textContent = "Select a milestone shape.";
+        taskFormError.hidden = false;
+        taskMilestoneShape.focus();
+        return;
+      }
       const task = { name, start, end, status, lane, color, descriptionPosition };
-      if (start === end) task.milestonePosition = milestonePosition;
+      if (start === end) {
+        task.milestonePosition = milestonePosition;
+        task.milestoneShape = milestoneShape;
+      }
       if (owner) task.owner = owner;
       if (description) task.description = description;
       if (editingTaskIndex === null) {
