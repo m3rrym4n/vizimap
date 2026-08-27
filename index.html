@@ -366,6 +366,10 @@
             gridcolor: "#dfe8f0",
             gridwidth: 1,
             showgrid: true,
+            tickfont: {
+              family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif',
+              size: 14
+            },
             ticks: "",
             zeroline: false
           },
@@ -595,8 +599,12 @@
             yanchor: "middle",
             align: "right",
             bordercolor: label.bgcolor,
-            borderpad: 7,
-            font: { color: "#ffffff", size: 11, family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif" }
+            borderpad: 8,
+            font: {
+              color: "#ffffff",
+              size: 14,
+              family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif'
+            }
           }));
       const descriptionAnnotations = tasksWithRows.flatMap(({ task, rowPosition }) => {
         const descriptionPosition = descriptionPositionForTask(task);
@@ -767,7 +775,7 @@
           } : undefined
         },
         height: Math.max(640, 370 + LANES.length * 70),
-        margin: isVizimapTheme || hasLaneColorOverrides ? { l: 180, r: 48, t: 92, b: 92, pad: 4 } : undefined,
+        margin: isVizimapTheme || hasLaneColorOverrides ? { l: 200, r: 48, t: 92, b: 92, pad: 4 } : undefined,
         barmode: "overlay",
         showlegend: false,
         shapes: [...alignmentGridlines, ...milestoneConnectors, todayLine],
