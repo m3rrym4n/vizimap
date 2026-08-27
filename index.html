@@ -47,6 +47,66 @@
       box-shadow: 0 2px 7px rgb(23 63 138 / 28%);
       color: white;
     }
+    #configure-view button {
+      background: #f8fafc;
+      border: 1px solid #9bafc3;
+      border-radius: 0.55rem;
+      color: #28445f;
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.015em;
+      padding: 0.55rem 0.9rem;
+      transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, color 150ms ease, transform 150ms ease;
+    }
+    #configure-view button:hover:not(:disabled) {
+      background: #e9f0f7;
+      border-color: #6f89a3;
+      color: #0b1e3b;
+      transform: translateY(-1px);
+    }
+    #configure-view button:focus-visible {
+      outline: 3px solid rgb(8 119 220 / 35%);
+      outline-offset: 2px;
+    }
+    #configure-view button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+    #configure-view button[type="submit"],
+    #configure-view > #open-roadmap,
+    #configure-view > #save-roadmap,
+    #add-pi,
+    #add-sprint,
+    #add-lane,
+    #add-task {
+      background: linear-gradient(135deg, #173f8a, #7651d8);
+      border-color: transparent;
+      box-shadow: 0 2px 7px rgb(23 63 138 / 24%);
+      color: white;
+    }
+    #configure-view button[type="submit"]:hover:not(:disabled),
+    #configure-view > #open-roadmap:hover:not(:disabled),
+    #configure-view > #save-roadmap:hover:not(:disabled),
+    #add-pi:hover:not(:disabled),
+    #add-sprint:hover:not(:disabled),
+    #add-lane:hover:not(:disabled),
+    #add-task:hover:not(:disabled) {
+      background: linear-gradient(135deg, #123572, #6542c5);
+      border-color: transparent;
+      color: white;
+    }
+    #configure-view .manager-list li button:last-child,
+    #configure-view .delete-warning button:first-of-type {
+      background: #fff5f5;
+      border-color: #e6a5a5;
+      color: #a61b1b;
+    }
+    #configure-view .manager-list li button:last-child:hover:not(:disabled),
+    #configure-view .delete-warning button:first-of-type:hover:not(:disabled) {
+      background: #b91c1c;
+      border-color: #b91c1c;
+      color: white;
+    }
     label[for="tick-mode"] {
       color: #52677d;
       font-size: 0.875rem;
