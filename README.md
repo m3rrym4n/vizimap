@@ -27,11 +27,11 @@ Program Increment and Sprint timelines are overlaid as bands at the top of the c
 - [x] In-app editing: add/edit/delete Program Increments, Sprints, and Tasks
 - [x] Lanes (swimlanes): tasks grouped into named, reorderable rows instead of one row per task
 - [x] Milestones: a same-day task automatically renders as a diamond marker
+- [x] Leadership-ready Vizimap visual theme matching the logo palette
 
 **In progress / planned:**
 - [ ] Chart / Configure view toggle (#32)
 - [ ] Click-to-overlay task description on the chart (#33)
-- [ ] Visual design pass — modern styling matching the logo's palette (#23, deferred until the above lands)
 
 ## Using it
 

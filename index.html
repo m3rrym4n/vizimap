@@ -85,6 +85,7 @@
           <label>X-axis Label <input id="x-axis-title" name="xAxisTitle" type="text" required></label>
           <label>Theme
             <select id="chart-theme" name="chartTheme" required>
+              <option value="vizimap">Vizimap</option>
               <option value="ggplot2">ggplot2</option>
               <option value="seaborn">seaborn</option>
               <option value="simple_white">simple_white</option>
@@ -196,10 +197,45 @@
   <script>
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
-    // Plotly's plotly_white template, embedded because Plotly.js does not support named templates.
-    const DEFAULT_CHART_THEME = "plotly_white";
-    // Canonical Plotly 7.0.0 built-in templates, embedded because Plotly.js does not support named templates.
+    const DEFAULT_CHART_THEME = "vizimap";
+    // Plotly templates are embedded because Plotly.js does not support named templates.
+    // The ten built-in templates below remain canonical Plotly 7.0.0 definitions.
     const CHART_THEMES = {
+      vizimap: {
+        layout: {
+          colorway: ["#0877dc", "#7651d8", "#08b9ad", "#08a9d9", "#173f8a"],
+          font: { family: "Inter, Aptos, Segoe UI, sans-serif", color: "#0b1e3b", size: 14 },
+          hoverlabel: {
+            align: "left",
+            bgcolor: "#0b1e3b",
+            bordercolor: "#0b1e3b",
+            font: { color: "#ffffff", family: "Inter, Aptos, Segoe UI, sans-serif" }
+          },
+          paper_bgcolor: "#ffffff",
+          plot_bgcolor: "#ffffff",
+          bargap: 0.28,
+          xaxis: {
+            gridcolor: "#dbe7f0",
+            gridwidth: 1,
+            linecolor: "#9db3c7",
+            showline: true,
+            ticks: "outside",
+            tickcolor: "#9db3c7",
+            title: { standoff: 18 },
+            zeroline: false
+          },
+          yaxis: {
+            gridcolor: "#edf3f7",
+            gridwidth: 1,
+            showgrid: true,
+            ticks: "",
+            zeroline: false
+          },
+          annotationdefaults: {
+            font: { color: "#0b1e3b", family: "Inter, Aptos, Segoe UI, sans-serif", size: 12 }
+          }
+        }
+      },
       ggplot2: {"layout":{"autotypenumbers":"strict","colorway":["#F8766D","#A3A500","#00BF7D","#00B0F6","#E76BF3"],"font":{"color":"rgb(51,51,51)"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"rgb(237,237,237)","polar":{"bgcolor":"rgb(237,237,237)","angularaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside"},"radialaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside"}},"ternary":{"bgcolor":"rgb(237,237,237)","aaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside"},"baxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside"},"caxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside"}},"coloraxis":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}},"colorscale":{"sequential":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]],"sequentialminus":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]]},"xaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside","title":{"standoff":15},"zerolinecolor":"white","automargin":true},"yaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside","title":{"standoff":15},"zerolinecolor":"white","automargin":true},"scene":{"xaxis":{"backgroundcolor":"rgb(237,237,237)","gridcolor":"white","linecolor":"white","showbackground":true,"showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"rgb(237,237,237)","gridcolor":"white","linecolor":"white","showbackground":true,"showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"rgb(237,237,237)","gridcolor":"white","linecolor":"white","showbackground":true,"showgrid":true,"tickcolor":"rgb(51,51,51)","ticks":"outside","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"fillcolor":"black","line":{"width":0},"opacity":0.3},"annotationdefaults":{"arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"rgb(237,237,237)","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"}},"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"},"colorscale":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"},"colorscale":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"},"colorscale":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"},"colorscale":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"},"colorscale":[[0,"rgb(20,44,66)"],[1,"rgb(90,179,244)"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"bar":[{"error_x":{"color":"rgb(51,51,51)"},"error_y":{"color":"rgb(51,51,51)"},"marker":{"line":{"color":"rgb(237,237,237)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}},"marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(237,237,237)","ticklen":6,"ticks":"inside"}}}],"carpet":[{"aaxis":{"endlinecolor":"rgb(51,51,51)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(51,51,51)"},"baxis":{"endlinecolor":"rgb(51,51,51)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(51,51,51)"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"rgb(237,237,237)"},"line":{"color":"white"}},"header":{"fill":{"color":"rgb(217,217,217)"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"rgb(237,237,237)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]}},
       seaborn: {"layout":{"autotypenumbers":"strict","colorway":["rgb(76,114,176)","rgb(221,132,82)","rgb(85,168,104)","rgb(196,78,82)","rgb(129,114,179)","rgb(147,120,96)","rgb(218,139,195)","rgb(140,140,140)","rgb(204,185,116)","rgb(100,181,205)"],"font":{"color":"rgb(36,36,36)"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"rgb(234,234,242)","polar":{"bgcolor":"rgb(234,234,242)","angularaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":""},"radialaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":""}},"ternary":{"bgcolor":"rgb(234,234,242)","aaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":""},"baxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":""},"caxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":""}},"coloraxis":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}},"colorscale":{"sequential":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]],"sequentialminus":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]]},"xaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true},"yaxis":{"gridcolor":"white","linecolor":"white","showgrid":true,"ticks":"","title":{"standoff":15},"zerolinecolor":"white","automargin":true},"scene":{"xaxis":{"backgroundcolor":"rgb(234,234,242)","gridcolor":"white","linecolor":"white","showbackground":true,"showgrid":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"yaxis":{"backgroundcolor":"rgb(234,234,242)","gridcolor":"white","linecolor":"white","showbackground":true,"showgrid":true,"ticks":"","zerolinecolor":"white","gridwidth":2},"zaxis":{"backgroundcolor":"rgb(234,234,242)","gridcolor":"white","linecolor":"white","showbackground":true,"showgrid":true,"ticks":"","zerolinecolor":"white","gridwidth":2}},"shapedefaults":{"fillcolor":"rgb(67,103,167)","line":{"width":0},"opacity":0.5},"annotationdefaults":{"arrowcolor":"rgb(67,103,167)"},"geo":{"bgcolor":"white","landcolor":"rgb(234,234,242)","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"}},"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2},"colorscale":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2},"colorscale":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2},"colorscale":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2},"colorscale":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2},"colorscale":[[0.0,"rgb(2,4,25)"],[0.06274509803921569,"rgb(24,15,41)"],[0.12549019607843137,"rgb(47,23,57)"],[0.18823529411764706,"rgb(71,28,72)"],[0.25098039215686274,"rgb(97,30,82)"],[0.3137254901960784,"rgb(123,30,89)"],[0.3764705882352941,"rgb(150,27,91)"],[0.4392156862745098,"rgb(177,22,88)"],[0.5019607843137255,"rgb(203,26,79)"],[0.5647058823529412,"rgb(223,47,67)"],[0.6274509803921569,"rgb(236,76,61)"],[0.6901960784313725,"rgb(242,107,73)"],[0.7529411764705882,"rgb(244,135,95)"],[0.8156862745098039,"rgb(245,162,122)"],[0.8784313725490196,"rgb(246,188,153)"],[0.9411764705882353,"rgb(247,212,187)"],[1.0,"rgb(250,234,220)"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"bar":[{"error_x":{"color":"rgb(36,36,36)"},"error_y":{"color":"rgb(36,36,36)"},"marker":{"line":{"color":"rgb(234,234,242)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}},"marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":0,"tickcolor":"rgb(36,36,36)","ticklen":8,"ticks":"outside","tickwidth":2}}}],"carpet":[{"aaxis":{"endlinecolor":"rgb(36,36,36)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(36,36,36)"},"baxis":{"endlinecolor":"rgb(36,36,36)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(36,36,36)"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"rgb(231,231,240)"},"line":{"color":"white"}},"header":{"fill":{"color":"rgb(183,183,191)"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"rgb(234,234,242)","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]}},
       simple_white: {"layout":{"autotypenumbers":"strict","colorway":["#1F77B4","#FF7F0E","#2CA02C","#D62728","#9467BD","#8C564B","#E377C2","#7F7F7F","#BCBD22","#17BECF"],"font":{"color":"rgb(36,36,36)"},"hovermode":"closest","hoverlabel":{"align":"left"},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"bgcolor":"white","angularaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"},"radialaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"}},"ternary":{"bgcolor":"white","aaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"},"baxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"},"caxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside"}},"coloraxis":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"colorscale":{"sequential":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"sequentialminus":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]],"diverging":[[0.0,"rgb(103,0,31)"],[0.1,"rgb(178,24,43)"],[0.2,"rgb(214,96,77)"],[0.3,"rgb(244,165,130)"],[0.4,"rgb(253,219,199)"],[0.5,"rgb(247,247,247)"],[0.6,"rgb(209,229,240)"],[0.7,"rgb(146,197,222)"],[0.8,"rgb(67,147,195)"],[0.9,"rgb(33,102,172)"],[1.0,"rgb(5,48,97)"]]},"xaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside","title":{"standoff":15},"zerolinecolor":"rgb(36,36,36)","automargin":true,"zeroline":false},"yaxis":{"gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showgrid":false,"showline":true,"ticks":"outside","title":{"standoff":15},"zerolinecolor":"rgb(36,36,36)","automargin":true,"zeroline":false},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showbackground":true,"showgrid":false,"showline":true,"ticks":"outside","zerolinecolor":"rgb(36,36,36)","gridwidth":2,"zeroline":false},"yaxis":{"backgroundcolor":"white","gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showbackground":true,"showgrid":false,"showline":true,"ticks":"outside","zerolinecolor":"rgb(36,36,36)","gridwidth":2,"zeroline":false},"zaxis":{"backgroundcolor":"white","gridcolor":"rgb(232,232,232)","linecolor":"rgb(36,36,36)","showbackground":true,"showgrid":false,"showline":true,"ticks":"outside","zerolinecolor":"rgb(36,36,36)","gridwidth":2,"zeroline":false}},"shapedefaults":{"fillcolor":"black","line":{"width":0},"opacity":0.3},"annotationdefaults":{"arrowhead":0,"arrowwidth":1},"geo":{"bgcolor":"white","landcolor":"white","subunitcolor":"white","showland":true,"showlakes":true,"lakecolor":"white"},"title":{"x":0.05}},"data":{"histogram2dcontour":[{"type":"histogram2dcontour","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]]}],"choropleth":[{"type":"choropleth","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}],"histogram2d":[{"type":"histogram2d","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]]}],"heatmap":[{"type":"heatmap","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]]}],"contourcarpet":[{"type":"contourcarpet","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}],"contour":[{"type":"contour","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]]}],"surface":[{"type":"surface","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"},"colorscale":[[0.0,"#440154"],[0.1111111111111111,"#482878"],[0.2222222222222222,"#3e4989"],[0.3333333333333333,"#31688e"],[0.4444444444444444,"#26828e"],[0.5555555555555556,"#1f9e89"],[0.6666666666666666,"#35b779"],[0.7777777777777778,"#6ece58"],[0.8888888888888888,"#b5de2b"],[1.0,"#fde725"]]}],"mesh3d":[{"type":"mesh3d","colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"parcoords":[{"type":"parcoords","line":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"scatterpolargl":[{"type":"scatterpolargl","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"bar":[{"error_x":{"color":"rgb(36,36,36)"},"error_y":{"color":"rgb(36,36,36)"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"scattergeo":[{"type":"scattergeo","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"scatterpolar":[{"type":"scatterpolar","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"histogram":[{"marker":{"line":{"color":"white","width":0.6}},"type":"histogram"}],"scattergl":[{"type":"scattergl","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"scatter3d":[{"type":"scatter3d","line":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}},"marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"scattermap":[{"type":"scattermap","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"scatterternary":[{"type":"scatterternary","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"scattercarpet":[{"type":"scattercarpet","marker":{"colorbar":{"outlinewidth":1,"tickcolor":"rgb(36,36,36)","ticks":"outside"}}}],"carpet":[{"aaxis":{"endlinecolor":"rgb(36,36,36)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(36,36,36)"},"baxis":{"endlinecolor":"rgb(36,36,36)","gridcolor":"white","linecolor":"white","minorgridcolor":"white","startlinecolor":"rgb(36,36,36)"},"type":"carpet"}],"table":[{"cells":{"fill":{"color":"rgb(237,237,237)"},"line":{"color":"white"}},"header":{"fill":{"color":"rgb(217,217,217)"},"line":{"color":"white"}},"type":"table"}],"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"pie":[{"automargin":true,"type":"pie"}]}},
@@ -244,6 +280,13 @@
     const TASK_STATUSES = ["planned", "in_progress", "done", "blocked"];
     const DESCRIPTION_POSITIONS = ["hidden", "above", "below"];
     const DEFAULT_TASK_COLOR = "#2563eb";
+    const VIZIMAP_COLORS = {
+      navy: "#0b1e3b",
+      pi: ["#7651d8", "#0877dc", "#08b9ad", "#173f8a"],
+      sprint: "#e6f1f7",
+      sprintText: "#28445f",
+      boundary: "#b7cada"
+    };
     const colorForTask = task =>
       /^#[0-9a-f]{6}$/i.test(task.color || "") ? task.color : DEFAULT_TASK_COLOR;
     const descriptionPositionForTask = task =>
@@ -341,10 +384,11 @@
     });
 
     const renderChart = () => {
+      const isVizimapTheme = CHART_THEME === "vizimap";
       const laneRowPositions = new Map(
         LANES.map(({ name }, index) => [name, taskRowStart + index])
       );
-      const bandTrace = (items, row, color, name, width) => ({
+      const bandTrace = (items, row, color, name, width, textColor) => ({
         type: "bar",
         orientation: "h",
         x: items.map(({ start, end }) => Date.parse(end) - Date.parse(start)),
@@ -355,7 +399,9 @@
         insidetextanchor: "middle",
         customdata: items.map(({ start, end }) => [start, end]),
         hovertemplate: "%{text}<br>Start: %{customdata[0]}<br>End: %{customdata[1]}<extra></extra>",
-        marker: { color },
+        marker: { color, line: { width: 0 } },
+        textfont: textColor ? { color: textColor, size: 13 } : undefined,
+        textangle: 0,
         width,
         name
       });
@@ -401,7 +447,11 @@
             (owner ? "<br>Owner: %{customdata[4]}" : "") +
             "<extra></extra>"
           ),
-          marker: { color: regularTasks.map(({ task }) => colorForTask(task)) },
+          marker: {
+            color: regularTasks.map(({ task }) => colorForTask(task)),
+            cornerradius: isVizimapTheme ? "35%" : 0,
+            line: isVizimapTheme ? { color: "rgba(11, 30, 59, 0.14)", width: 1 } : undefined
+          },
           width: 0.6
         }] : []),
         ...(milestones.length ? [{
@@ -424,27 +474,77 @@
           marker: {
             color: milestones.map(({ task }) => colorForTask(task)),
             size: 14,
-            symbol: "diamond"
+            symbol: "diamond",
+            line: isVizimapTheme ? { color: "#ffffff", width: 2 } : undefined
           },
           cliponaxis: false
         }] : [])
       ];
       const alignmentGridlines = [
-        ...boundaryShapes(SPRINTS, { color: "#cbd5e1", width: 1, dash: "dot" }),
-        ...boundaryShapes(PROGRAM_INCREMENTS, { color: "#64748b", width: 2, dash: "dash" })
+        ...boundaryShapes(SPRINTS, {
+          color: isVizimapTheme ? "#d4e2ec" : "#cbd5e1",
+          width: 1,
+          dash: "dot"
+        }),
+        ...boundaryShapes(PROGRAM_INCREMENTS, {
+          color: isVizimapTheme ? VIZIMAP_COLORS.boundary : "#64748b",
+          width: isVizimapTheme ? 1.5 : 2,
+          dash: "dash"
+        })
       ];
+      const piColors = PROGRAM_INCREMENTS.map((_, index) =>
+        VIZIMAP_COLORS.pi[index % VIZIMAP_COLORS.pi.length]
+      );
+      const piChevronTrace = isVizimapTheme && PROGRAM_INCREMENTS.length > 1
+        ? [{
+            type: "scatter",
+            mode: "markers",
+            x: PROGRAM_INCREMENTS.slice(1).map(({ start }) => start),
+            y: PROGRAM_INCREMENTS.slice(1).map(() => 0),
+            marker: {
+              color: piColors.slice(0, -1),
+              line: { color: "#ffffff", width: 3 },
+              size: 24,
+              symbol: "triangle-right"
+            },
+            hoverinfo: "skip",
+            showlegend: false,
+            cliponaxis: false
+          }]
+        : [];
 
       chartReady = Plotly.react(
         chart,
         [
-          bandTrace(PROGRAM_INCREMENTS, 0, "#2563eb", "Program Increments", 0.7),
-          bandTrace(SPRINTS, 1, "#93c5fd", "Sprints", 0.45),
+          bandTrace(
+            PROGRAM_INCREMENTS,
+            0,
+            isVizimapTheme ? piColors : "#2563eb",
+            "Program Increments",
+            isVizimapTheme ? 0.76 : 0.7,
+            isVizimapTheme ? "#ffffff" : undefined
+          ),
+          ...piChevronTrace,
+          bandTrace(
+            SPRINTS,
+            1,
+            isVizimapTheme ? VIZIMAP_COLORS.sprint : "#93c5fd",
+            "Sprints",
+            isVizimapTheme ? 0.5 : 0.45,
+            isVizimapTheme ? VIZIMAP_COLORS.sprintText : undefined
+          ),
           ...taskTraces
         ],
         {
         template: CHART_THEMES[CHART_THEME],
-        title: { text: CHART_TITLE, x: 0.5 },
+        title: {
+          text: CHART_TITLE,
+          x: 0.5,
+          xanchor: "center",
+          font: isVizimapTheme ? { color: VIZIMAP_COLORS.navy, size: 26 } : undefined
+        },
         height: Math.max(640, 370 + LANES.length * 70),
+        margin: isVizimapTheme ? { l: 140, r: 48, t: 92, b: 92, pad: 4 } : undefined,
         barmode: "overlay",
         showlegend: false,
         shapes: [...alignmentGridlines, todayLine],
