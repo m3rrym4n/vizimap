@@ -11,33 +11,38 @@ Program Increment and Sprint timelines are overlaid as bands at the top of the c
 
 ## Status
 
-🚧 Actively being built. See the [tracking issue](https://github.com/m3rrym4n/vizimap/issues/8) for current progress and the full build order.
+Feature-complete and in active use. The core tool — roadmap authoring, lanes, milestones, descriptions, PNG export, persistence, and a custom Vizimap visual theme — is built and stable. Ongoing work is refinement rather than new capability: see the [tracking issue](https://github.com/m3rrym4n/vizimap/issues/8) for what's currently being polished.
 
-**Built:**
-- [x] Core data model and rendering scaffold
-- [x] Program Increment band
-- [x] Sprint band
-- [x] PI/Sprint alignment gridlines
-- [x] Task activity Gantt rows
-- [x] Status color-coding and legend
-- [x] Date range slider and "today" marker
-- [x] Configurable x-axis (Calendar / Sprint / PI tick modes)
-- [x] Export to PNG for leadership briefs
-- [x] Open/save roadmaps as a JSON file (in place, via the File System Access API)
-- [x] In-app editing: add/edit/delete Program Increments, Sprints, and Tasks
-- [x] Lanes (swimlanes): tasks grouped into named, reorderable rows instead of one row per task
-- [x] Milestones: a same-day task automatically renders as a diamond marker
-- [x] Leadership-ready Vizimap visual theme matching the logo palette
+## Features
 
-**In progress / planned:**
-- [ ] Chart / Configure view toggle (#32)
-- [ ] Click-to-overlay task description on the chart (#33)
+**Roadmap structure**
+- Program Increments and Sprints, overlaid as bands at the top of the chart, with dashed alignment gridlines running down through the tasks below
+- Tasks organized into named, reorderable Lanes (swimlanes) — multiple tasks share a lane's row instead of one row per task
+- A same-day task automatically renders as a diamond milestone marker instead of a bar, and can be perched above or below its lane row (with a connector line) to avoid crowding
+
+**Authoring, in the app**
+- Full add/edit/delete for Program Increments, Sprints, Lanes, and Tasks via a Configure screen — no code editing required
+- Per-task and per-Program-Increment manual color pickers, overriding the active theme's defaults where set
+- A Chart / Configure toggle keeps editing and viewing cleanly separate
+
+**Descriptions, three ways**
+- Hover tooltip — a quick-glance summary
+- Click-to-overlay — a dismissible on-chart dialog with the full text
+- Inline annotation (above/below a task or milestone) — baked directly into the chart so it's still visible in an exported PNG, unlike the other two
+
+**Presentation**
+- A custom Vizimap visual theme (matching the logo palette), plus ten of Plotly's built-in themes, all selectable from Chart Settings
+- Editable chart title and x-axis label
+- High-resolution PNG export via Plotly's native export button, with a dated filename
+- Configurable x-axis tick labels: plain calendar dates, or aligned to Sprint or PI names
+
+**Persistence**
+- Open and Save a roadmap directly as a `.json` file via the File System Access API — edits happen in place, no server, no download-then-replace step
+- Opens with built-in sample data if no file has been loaded yet, so `index.html` is useful with zero setup
 
 ## Using it
 
 Open `index.html` in **Chrome or Edge**. (This is a deliberate choice, not a gap — roadmap save/load uses the File System Access API, which only Chromium browsers support.)
-
-Roadmap data (Program Increments, Sprints, Lanes, Tasks) can be opened and saved directly as a `.json` file from within the app — no code editing required. Until you've opened a file of your own, the app shows built-in sample data so `index.html` is useful with zero setup.
 
 ## Architecture
 
