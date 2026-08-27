@@ -263,6 +263,8 @@
       <form id="lane-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
           <label>Name <input id="lane-name" name="name" type="text" required></label>
+          <label><input id="lane-color-override" type="checkbox"> Override theme color</label>
+          <label>Color <input id="lane-color" name="color" type="color" disabled></label>
         </div>
         <p id="lane-form-error" class="form-error" role="alert" hidden></p>
         <div class="manager-actions">
@@ -515,6 +517,7 @@
 
     const renderChart = () => {
       const isVizimapTheme = CHART_THEME === "vizimap";
+      const hasLaneColorOverrides = LANES.some(({ color }) => Boolean(color));
       const exportDate = new Date();
       const exportDateStamp = [
         exportDate.getFullYear(),
@@ -554,16 +557,20 @@
           : position === "below" ? MILESTONE_OFFSET : 0;
         return { task, rowPosition, markerPosition: rowPosition + offset, position };
       });
-      const rowLabelAnnotations = isVizimapTheme
-        ? [
+      const rowLabelAnnotations = [
+          ...(isVizimapTheme ? [
             { text: "PROGRAM INCREMENTS", y: 0, bgcolor: VIZIMAP_COLORS.navy },
-            { text: "SPRINTS", y: 1, bgcolor: "#28445f" },
-            ...LANES.map(({ name }, index) => ({
+            { text: "SPRINTS", y: 1, bgcolor: "#28445f" }
+          ] : []),
+          ...LANES.flatMap(({ name, color }, index) => {
+            if (!isVizimapTheme && !color) return [];
+            return [{
               text: escapeAnnotationText(name),
               y: taskRowStart + index,
-              bgcolor: index % 2 ? "#0877dc" : "#173f8a"
-            }))
-          ].map(label => ({
+              bgcolor: color || (index % 2 ? "#0877dc" : "#173f8a")
+            }];
+          })
+        ].map(label => ({
             ...label,
             x: -0.012,
             xref: "paper",
@@ -575,8 +582,7 @@
             bordercolor: label.bgcolor,
             borderpad: 7,
             font: { color: "#ffffff", size: 11, family: "-apple-system, BlinkMacSystemFont, Segoe UI, Inter, Roboto, system-ui, sans-serif" }
-          }))
-        : [];
+          }));
       const descriptionAnnotations = tasksWithRows.flatMap(({ task, rowPosition }) => {
         const descriptionPosition = descriptionPositionForTask(task);
         const description = String(task.description || "").trim();
@@ -734,7 +740,7 @@
           } : undefined
         },
         height: Math.max(640, 370 + LANES.length * 70),
-        margin: isVizimapTheme ? { l: 180, r: 48, t: 92, b: 92, pad: 4 } : undefined,
+        margin: isVizimapTheme || hasLaneColorOverrides ? { l: 180, r: 48, t: 92, b: 92, pad: 4 } : undefined,
         barmode: "overlay",
         showlegend: false,
         shapes: [...alignmentGridlines, ...milestoneConnectors, todayLine],
@@ -749,7 +755,7 @@
           tickvals: [0, 1, ...laneRowPositions.values()],
           ticktext: isVizimapTheme
             ? ["", "", ...LANES.map(() => "")]
-            : ["Program Increments", "Sprints", ...LANES.map(({ name }) => name)],
+            : ["Program Increments", "Sprints", ...LANES.map(({ name, color }) => color ? "" : name)],
           range: [taskRowStart + LANES.length - 0.4, -0.6],
           automargin: true
         }
@@ -1115,6 +1121,8 @@
     const laneList = document.getElementById("lane-list");
     const laneEditor = document.getElementById("lane-editor");
     const laneName = document.getElementById("lane-name");
+    const laneColorOverride = document.getElementById("lane-color-override");
+    const laneColor = document.getElementById("lane-color");
     const laneFormError = document.getElementById("lane-form-error");
     const laneDeleteWarning = document.getElementById("lane-delete-warning");
     const saveLane = document.getElementById("save-lane");
@@ -1136,18 +1144,26 @@
       hideLaneDeleteWarning();
       editingLaneIndex = index;
       laneEditor.reset();
+      laneColor.disabled = true;
       laneFormError.hidden = true;
 
       if (index === null) {
         saveLane.textContent = "Add Lane";
       } else {
         laneName.value = LANES[index].name;
+        laneColorOverride.checked = Boolean(LANES[index].color);
+        laneColor.disabled = !laneColorOverride.checked;
+        if (LANES[index].color) laneColor.value = LANES[index].color;
         saveLane.textContent = "Save changes";
       }
 
       laneEditor.hidden = false;
       laneName.focus();
     };
+
+    laneColorOverride.addEventListener("change", () => {
+      laneColor.disabled = !laneColorOverride.checked;
+    });
 
     const deleteLane = async index => {
       LANES.splice(index, 1);
@@ -1239,6 +1255,7 @@
     laneEditor.addEventListener("submit", async event => {
       event.preventDefault();
       const name = laneName.value.trim();
+      const color = laneColorOverride.checked ? laneColor.value : undefined;
 
       if (!name) {
         laneFormError.textContent = "Name is required.";
@@ -1254,10 +1271,10 @@
       }
 
       if (editingLaneIndex === null) {
-        LANES.push({ name });
+        LANES.push({ name, ...(color ? { color } : {}) });
       } else {
         const previousName = LANES[editingLaneIndex].name;
-        LANES[editingLaneIndex] = { name };
+        LANES[editingLaneIndex] = { name, ...(color ? { color } : {}) };
         TASKS.forEach(task => {
           if (task.lane === previousName) task.lane = name;
         });
