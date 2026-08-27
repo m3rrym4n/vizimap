@@ -22,7 +22,7 @@ Feature-complete and in active use. The core tool — roadmap authoring, lanes, 
 
 **Authoring, in the app**
 - Full add/edit/delete for Program Increments, Sprints, Lanes, and Tasks via a Configure screen — no code editing required
-- Per-task and per-Program-Increment manual color pickers, overriding the active theme's defaults where set
+- Per-task, per-Program-Increment, and per-Lane manual color pickers, overriding the active theme's defaults where set
 - A Chart / Configure toggle keeps editing and viewing cleanly separate
 
 **Descriptions, three ways**
@@ -32,7 +32,7 @@ Feature-complete and in active use. The core tool — roadmap authoring, lanes, 
 
 **Presentation**
 - A custom Vizimap visual theme (matching the logo palette), plus ten of Plotly's built-in themes, all selectable from Chart Settings
-- Editable chart title and x-axis label
+- Editable Chart Header and Chart Footer text
 - High-resolution PNG export via Plotly's native export button, with a dated filename
 - Configurable x-axis tick labels: plain calendar dates, or aligned to Sprint or PI names
 
@@ -53,3 +53,11 @@ Open `index.html` in **Chrome or Edge**. (This is a deliberate choice, not a gap
 ## Contributing
 
 This repo is built issue-by-issue by an autonomous coding agent (Codex, dispatched via [Variflex](https://github.com/m3rrym4n/variflex)) against a fixed set of standing rules. See [`AGENTS.md`](./AGENTS.md) for the full architecture, scope, and working philosophy this repo is held to.
+
+## Acknowledgments
+
+Vizimap's chart rendering is built on [Plotly.js](https://plotly.com/javascript/), loaded via CDN and used under its [MIT License](https://github.com/plotly/plotly.js/blob/main/LICENSE). Plotly.js is copyright Plotly, Inc. — this project bundles none of its source, but the charting engine that makes Vizimap possible is entirely theirs.
+
+## License
+
+[MIT](./LICENSE) — see the LICENSE file for the full text.
