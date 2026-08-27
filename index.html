@@ -98,7 +98,6 @@
         <option value="sprint">Sprint</option>
         <option value="pi">PI</option>
       </select>
-      <button id="export-png" type="button">Export PNG</button>
       <div class="chart-container">
         <div id="roadmap-chart" style="width: 100%; min-height: 640px;"></div>
         <aside id="task-description-overlay" class="task-description-overlay" role="dialog" aria-labelledby="task-description-title" hidden>
@@ -438,6 +437,12 @@
 
     const renderChart = () => {
       const isVizimapTheme = CHART_THEME === "vizimap";
+      const exportDate = new Date();
+      const exportDateStamp = [
+        exportDate.getFullYear(),
+        String(exportDate.getMonth() + 1).padStart(2, "0"),
+        String(exportDate.getDate()).padStart(2, "0")
+      ].join("-");
       const laneRowPositions = new Map(
         LANES.map(({ name }, index) => [name, taskRowStart + index])
       );
@@ -690,39 +695,19 @@
           automargin: true
         }
         },
-        { responsive: true }
+        {
+          responsive: true,
+          toImageButtonOptions: {
+            format: "png",
+            filename: `roadmap-${exportDateStamp}`,
+            scale: 2
+          }
+        }
       );
       return chartReady;
     };
 
     renderChart().then(() => chart.on("plotly_click", handleChartClick));
-
-    const exportPng = document.getElementById("export-png");
-    exportPng.addEventListener("click", async () => {
-      exportPng.disabled = true;
-
-      try {
-        await chartReady;
-        const date = new Date();
-        const dateStamp = [
-          date.getFullYear(),
-          String(date.getMonth() + 1).padStart(2, "0"),
-          String(date.getDate()).padStart(2, "0")
-        ].join("-");
-
-        await Plotly.downloadImage(chart, {
-          format: "png",
-          filename: `roadmap-${dateStamp}`,
-          width: chart._fullLayout.width,
-          height: chart._fullLayout.height,
-          scale: 2
-        });
-      } catch (error) {
-        alert(`Could not export the roadmap: ${error.message}`);
-      } finally {
-        exportPng.disabled = false;
-      }
-    });
 
     const tickMode = document.getElementById("tick-mode");
     tickMode.addEventListener("change", () => {
