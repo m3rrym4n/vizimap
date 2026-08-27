@@ -148,6 +148,8 @@
           <label>Name <input id="pi-name" name="name" type="text" required></label>
           <label>Start date <input id="pi-start" name="start" type="date" required></label>
           <label>End date <input id="pi-end" name="end" type="date" required></label>
+          <label><input id="pi-color-override" type="checkbox"> Override theme color</label>
+          <label>Color <input id="pi-color" name="color" type="color" disabled></label>
         </div>
         <p id="pi-form-error" class="form-error" role="alert" hidden></p>
         <div class="manager-actions">
@@ -608,7 +610,11 @@
           layer: "below"
         }));
       const piColors = PROGRAM_INCREMENTS.map((_, index) =>
-        VIZIMAP_COLORS.pi[index % VIZIMAP_COLORS.pi.length]
+        /^#[0-9a-f]{6}$/i.test(PROGRAM_INCREMENTS[index].color || "")
+          ? PROGRAM_INCREMENTS[index].color
+          : isVizimapTheme
+            ? VIZIMAP_COLORS.pi[index % VIZIMAP_COLORS.pi.length]
+            : "#2563eb"
       );
       const piChevronTrace = isVizimapTheme && PROGRAM_INCREMENTS.length > 1
         ? [{
@@ -634,7 +640,7 @@
           bandTrace(
             PROGRAM_INCREMENTS,
             0,
-            isVizimapTheme ? piColors : "#2563eb",
+            piColors,
             "Program Increments",
             isVizimapTheme ? 0.76 : 0.7,
             isVizimapTheme ? "#ffffff" : undefined
@@ -745,6 +751,8 @@
     const piName = document.getElementById("pi-name");
     const piStart = document.getElementById("pi-start");
     const piEnd = document.getElementById("pi-end");
+    const piColorOverride = document.getElementById("pi-color-override");
+    const piColor = document.getElementById("pi-color");
     const piFormError = document.getElementById("pi-form-error");
     const piDeleteWarning = document.getElementById("pi-delete-warning");
     const savePi = document.getElementById("save-pi");
@@ -788,11 +796,19 @@
       piFormError.hidden = true;
     };
 
+    piColorOverride.addEventListener("change", () => {
+      piColor.disabled = !piColorOverride.checked;
+    });
+
     const openPiEditor = index => {
       hideDeleteWarning();
       editingPiIndex = index;
       piEditor.reset();
       piFormError.hidden = true;
+
+      const piIndex = index === null ? PROGRAM_INCREMENTS.length : index;
+      piColor.value = VIZIMAP_COLORS.pi[piIndex % VIZIMAP_COLORS.pi.length];
+      piColor.disabled = true;
 
       if (index === null) {
         savePi.textContent = "Add PI";
@@ -801,6 +817,11 @@
         piName.value = pi.name;
         piStart.value = pi.start;
         piEnd.value = pi.end;
+        if (/^#[0-9a-f]{6}$/i.test(pi.color || "")) {
+          piColorOverride.checked = true;
+          piColor.value = pi.color;
+          piColor.disabled = false;
+        }
         savePi.textContent = "Save changes";
       }
 
@@ -899,6 +920,7 @@
       }
 
       const programIncrement = { name, start, end };
+      if (piColorOverride.checked) programIncrement.color = piColor.value;
       if (editingPiIndex === null) {
         PROGRAM_INCREMENTS.push(programIncrement);
       } else {
