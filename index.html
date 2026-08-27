@@ -542,25 +542,6 @@
           },
           width: 0.6
         }] : []),
-        ...(isVizimapTheme && regularTasks.length ? [{
-          type: "scatter",
-          meta: "task",
-          mode: "markers",
-          x: regularTasks.map(({ task: { end } }) => end),
-          y: regularTasks.map(({ rowPosition }) => rowPosition),
-          customdata: regularTasks.map(({ task }) =>
-            [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
-          ),
-          hoverinfo: "skip",
-          marker: {
-            color: regularTasks.map(({ task }) => colorForTask(task)),
-            line: { color: "rgba(255, 255, 255, 0.72)", width: 1 },
-            size: 18,
-            symbol: "triangle-right"
-          },
-          cliponaxis: false,
-          showlegend: false
-        }] : []),
         ...(positionedMilestones.length ? [{
           type: "scatter",
           meta: "task",
