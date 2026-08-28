@@ -17,7 +17,7 @@
     h1 { font-size: 1.85rem; font-weight: 800; letter-spacing: -0.035em; }
     .app-version {
       color: #52677d;
-      font-size: 0.75rem;
+      font-size: 1.25rem;
       position: fixed;
       right: 1rem;
       top: 1rem;
@@ -355,12 +355,12 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.0";
+    const APP_VERSION = "1.0.1";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
     const DEFAULT_SHOW_PI_SPRINT = true;
-    document.getElementById("app-version").textContent = APP_VERSION;
+    document.getElementById("app-version").textContent = `Version ${APP_VERSION}`;
     // Plotly templates are embedded because Plotly.js does not support named templates.
     // The ten built-in templates below remain canonical Plotly 7.0.0 definitions.
     const CHART_THEMES = {
