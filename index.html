@@ -136,7 +136,8 @@
     .manager-fields label { display: grid; gap: 0.25rem; }
     .manager-fields label[hidden] { display: none; }
     .manager-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
-    .form-error, .delete-warning { color: #b91c1c; }
+    .form-error, .delete-warning, .import-error { color: #b91c1c; }
+    .import-error { white-space: pre-line; }
     .delete-warning { background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.4rem; margin-top: 1rem; padding: 0.75rem; }
     .chart-container { position: relative; }
     .task-description-overlay {
@@ -220,6 +221,9 @@
       <h2 id="pi-manager-title">Program Increments</h2>
       <button id="add-pi" type="button">Add PI</button>
       <button id="export-pis" type="button">Export CSV</button>
+      <button id="import-pis" type="button">Import CSV</button>
+      <input id="import-pis-file" type="file" accept=".csv,text/csv" hidden>
+      <p id="import-pis-error" class="import-error" role="alert" hidden></p>
       <div id="pi-delete-warning" class="delete-warning" role="alert" hidden></div>
       <form id="pi-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
@@ -241,6 +245,9 @@
       <h2 id="sprint-manager-title">Sprints</h2>
       <button id="add-sprint" type="button">Add Sprint</button>
       <button id="export-sprints" type="button">Export CSV</button>
+      <button id="import-sprints" type="button">Import CSV</button>
+      <input id="import-sprints-file" type="file" accept=".csv,text/csv" hidden>
+      <p id="import-sprints-error" class="import-error" role="alert" hidden></p>
       <form id="sprint-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
           <label>Name <input id="sprint-name" name="name" type="text" required></label>
@@ -262,6 +269,9 @@
       <h2 id="lane-manager-title">Lanes</h2>
       <button id="add-lane" type="button">Add Lane</button>
       <button id="export-lanes" type="button">Export CSV</button>
+      <button id="import-lanes" type="button">Import CSV</button>
+      <input id="import-lanes-file" type="file" accept=".csv,text/csv" hidden>
+      <p id="import-lanes-error" class="import-error" role="alert" hidden></p>
       <div id="lane-delete-warning" class="delete-warning" role="alert" hidden></div>
       <form id="lane-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
@@ -281,6 +291,9 @@
       <h2 id="task-manager-title">Tasks</h2>
       <button id="add-task" type="button">Add Task</button>
       <button id="export-tasks" type="button">Export CSV</button>
+      <button id="import-tasks" type="button">Import CSV</button>
+      <input id="import-tasks-file" type="file" accept=".csv,text/csv" hidden>
+      <p id="import-tasks-error" class="import-error" role="alert" hidden></p>
       <form id="task-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
           <label>Name <input id="task-name" name="name" type="text" required></label>
@@ -575,6 +588,224 @@
         "descriptionPosition", "milestonePosition", "milestoneShape"
       ], TASKS)
     );
+
+    const CSV_SCHEMAS = {
+      pis: {
+        label: "Program Increments",
+        fields: ["name", "start", "end", "color"],
+        required: ["name", "start", "end"],
+        dates: ["start", "end"]
+      },
+      sprints: {
+        label: "Sprints",
+        fields: ["name", "start", "end", "piName"],
+        required: ["name", "start", "end", "piName"],
+        dates: ["start", "end"]
+      },
+      lanes: {
+        label: "Lanes",
+        fields: ["name", "color"],
+        required: ["name"],
+        dates: []
+      },
+      tasks: {
+        label: "Tasks",
+        fields: [
+          "name", "start", "end", "status", "owner", "lane", "description", "color",
+          "descriptionPosition", "milestonePosition", "milestoneShape"
+        ],
+        required: ["name", "start", "end", "status", "lane"],
+        dates: ["start", "end"]
+      }
+    };
+
+    const parseCsv = text => {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let quoted = false;
+      const source = text.replace(/^\uFEFF/, "");
+
+      for (let index = 0; index < source.length; index += 1) {
+        const character = source[index];
+        if (quoted) {
+          if (character === '"' && source[index + 1] === '"') {
+            field += '"';
+            index += 1;
+          } else if (character === '"') {
+            quoted = false;
+          } else {
+            field += character;
+          }
+        } else if (character === '"' && field === "") {
+          quoted = true;
+        } else if (character === ",") {
+          row.push(field);
+          field = "";
+        } else if (character === "\n" || character === "\r") {
+          if (character === "\r" && source[index + 1] === "\n") index += 1;
+          row.push(field);
+          rows.push(row);
+          row = [];
+          field = "";
+        } else {
+          field += character;
+        }
+      }
+
+      if (quoted) throw new Error("The CSV contains an unclosed quoted field.");
+      if (field !== "" || row.length) {
+        row.push(field);
+        rows.push(row);
+      }
+      return rows.filter(values => values.some(value => value.trim() !== ""));
+    };
+
+    const normalizeCsvDate = value => {
+      const text = value.trim();
+      let year;
+      let month;
+      let day;
+      let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+      if (match) {
+        [, year, month, day] = match;
+      } else {
+        match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+        if (!match) return null;
+        [, month, day, year] = match;
+      }
+
+      const numericYear = Number(year);
+      const numericMonth = Number(month);
+      const numericDay = Number(day);
+      const date = new Date(Date.UTC(numericYear, numericMonth - 1, numericDay));
+      if (
+        date.getUTCFullYear() !== numericYear ||
+        date.getUTCMonth() !== numericMonth - 1 ||
+        date.getUTCDate() !== numericDay
+      ) return null;
+      return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    };
+
+    const validateCsvRecord = (entity, record, rowNumber) => {
+      const schema = CSV_SCHEMAS[entity];
+      const errors = [];
+      schema.required.forEach(field => {
+        if (!record[field]) errors.push(`${field} is required`);
+      });
+      schema.dates.forEach(field => {
+        if (!record[field]) return;
+        const normalized = normalizeCsvDate(record[field]);
+        if (normalized) record[field] = normalized;
+        else errors.push(`${field} has an invalid date (${record[field]})`);
+      });
+
+      if (record.start && record.end && normalizeCsvDate(record.start) && normalizeCsvDate(record.end)) {
+        const sameDayAllowed = entity === "tasks";
+        if (record.end < record.start || (!sameDayAllowed && record.end === record.start)) {
+          errors.push(`end must be ${sameDayAllowed ? "on or " : ""}after start`);
+        }
+      }
+      if (record.color && !/^#[0-9a-f]{6}$/i.test(record.color)) {
+        errors.push(`color must be a six-digit hex value (${record.color})`);
+      }
+      if (entity === "sprints" && record.piName && !PROGRAM_INCREMENTS.some(pi => pi.name === record.piName)) {
+        errors.push(`piName does not match an existing Program Increment (${record.piName})`);
+      }
+      if (entity === "tasks") {
+        if (record.lane && !LANES.some(lane => lane.name === record.lane)) {
+          errors.push(`lane does not match an existing Lane (${record.lane})`);
+        }
+        const normalizedStatus = normalizeStatus(record.status);
+        if (record.status && normalizedStatus === "unknown") errors.push(`status is invalid (${record.status})`);
+        else if (record.status) record.status = normalizedStatus;
+        if (record.descriptionPosition && !DESCRIPTION_POSITIONS.includes(record.descriptionPosition)) {
+          errors.push(`descriptionPosition is invalid (${record.descriptionPosition})`);
+        }
+        if (record.milestonePosition && !MILESTONE_POSITIONS.includes(record.milestonePosition)) {
+          errors.push(`milestonePosition is invalid (${record.milestonePosition})`);
+        }
+        if (record.milestoneShape && !MILESTONE_SHAPES.includes(record.milestoneShape)) {
+          errors.push(`milestoneShape is invalid (${record.milestoneShape})`);
+        }
+      }
+      return errors.map(error => `Row ${rowNumber}: ${error}`);
+    };
+
+    const recordsFromCsv = (entity, text) => {
+      const schema = CSV_SCHEMAS[entity];
+      const rows = parseCsv(text);
+      if (!rows.length) throw new Error("The CSV is empty.");
+      const header = rows[0].map(field => field.trim());
+      if (header.length !== schema.fields.length || header.some((field, index) => field !== schema.fields[index])) {
+        throw new Error(`Expected columns: ${schema.fields.join(", ")}`);
+      }
+
+      const records = [];
+      const errors = [];
+      rows.slice(1).forEach((values, index) => {
+        const rowNumber = index + 2;
+        if (values.length !== schema.fields.length) {
+          errors.push(`Row ${rowNumber}: expected ${schema.fields.length} columns but found ${values.length}`);
+          return;
+        }
+        const record = Object.fromEntries(schema.fields.map((field, fieldIndex) => [field, values[fieldIndex].trim()]));
+        errors.push(...validateCsvRecord(entity, record, rowNumber));
+        Object.keys(record).forEach(field => {
+          if (record[field] === "") delete record[field];
+        });
+        records.push(record);
+      });
+      if (!records.length) errors.push("No data rows were found.");
+      if (errors.length) throw new Error(errors.join("\n"));
+      return records;
+    };
+
+    const refreshAfterCsvImport = async entity => {
+      if (entity === "pis") renderPiList();
+      if (entity === "sprints") renderSprintList();
+      if (entity === "lanes") renderLaneList();
+      if (entity === "tasks") renderTaskList();
+      await refreshRoadmap();
+    };
+
+    const setCsvCollection = (entity, records, replace) => {
+      if (entity === "pis") PROGRAM_INCREMENTS = replace ? records : [...PROGRAM_INCREMENTS, ...records];
+      if (entity === "sprints") SPRINTS = replace ? records : [...SPRINTS, ...records];
+      if (entity === "lanes") LANES = replace ? records : [...LANES, ...records];
+      if (entity === "tasks") TASKS = replace ? records : [...TASKS, ...records];
+    };
+
+    Object.keys(CSV_SCHEMAS).forEach(entity => {
+      const button = document.getElementById(`import-${entity}`);
+      const input = document.getElementById(`import-${entity}-file`);
+      const errorMessage = document.getElementById(`import-${entity}-error`);
+      button.addEventListener("click", () => {
+        errorMessage.hidden = true;
+        input.value = "";
+        input.click();
+      });
+      input.addEventListener("change", async () => {
+        const [file] = input.files;
+        if (!file) return;
+        try {
+          const records = recordsFromCsv(entity, await file.text());
+          const replace = window.confirm(
+            `Import ${records.length} ${CSV_SCHEMAS[entity].label} row${records.length === 1 ? "" : "s"}?\n\n` +
+            "Choose OK to REPLACE the entire collection.\nChoose Cancel to APPEND the imported rows."
+          );
+          setCsvCollection(entity, records, replace);
+          await refreshAfterCsvImport(entity);
+          errorMessage.hidden = true;
+        } catch (error) {
+          errorMessage.textContent = `Import failed:\n${error.message}`;
+          errorMessage.hidden = false;
+          errorMessage.scrollIntoView({ block: "nearest" });
+        } finally {
+          input.value = "";
+        }
+      });
+    });
 
     const renderChart = () => {
       const isVizimapTheme = CHART_THEME === "vizimap";
