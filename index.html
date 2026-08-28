@@ -174,11 +174,11 @@
       <label for="tick-mode">Timeline labels:</label>
       <select id="tick-mode">
         <option value="calendar" selected>Calendar</option>
-        <option value="sprint">Sprint</option>
-        <option value="pi">PI</option>
+        <option id="tick-mode-sprint" value="sprint">Sprint</option>
+        <option id="tick-mode-pi" value="pi">PI</option>
       </select>
       <div class="chart-container">
-        <div id="roadmap-chart" style="width: 100%; min-height: 640px;"></div>
+        <div id="roadmap-chart" style="width: 100%;"></div>
         <aside id="task-description-overlay" class="task-description-overlay" role="dialog" aria-labelledby="task-description-title" hidden>
           <button id="task-description-close" class="task-description-close" type="button" aria-label="Close task description">Close</button>
           <h2 id="task-description-title"></h2>
@@ -211,13 +211,14 @@
               <option value="gridon">gridon</option>
             </select>
           </label>
+          <label><input id="show-pi-sprint" name="showPiSprint" type="checkbox"> Show Program Increments &amp; Sprints</label>
         </div>
         <div class="manager-actions">
           <button type="submit">Save changes</button>
         </div>
       </form>
       </section>
-      <section class="roadmap-manager" aria-labelledby="pi-manager-title">
+      <section id="pi-manager" class="roadmap-manager" aria-labelledby="pi-manager-title">
       <h2 id="pi-manager-title">Program Increments</h2>
       <button id="add-pi" type="button">Add PI</button>
       <button id="export-pis" type="button">Export CSV</button>
@@ -241,7 +242,7 @@
       </form>
       <ul id="pi-list" class="manager-list"></ul>
       </section>
-      <section class="roadmap-manager" aria-labelledby="sprint-manager-title">
+      <section id="sprint-manager" class="roadmap-manager" aria-labelledby="sprint-manager-title">
       <h2 id="sprint-manager-title">Sprints</h2>
       <button id="add-sprint" type="button">Add Sprint</button>
       <button id="export-sprints" type="button">Export CSV</button>
@@ -348,6 +349,7 @@
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
+    const DEFAULT_SHOW_PI_SPRINT = true;
     // Plotly templates are embedded because Plotly.js does not support named templates.
     // The ten built-in templates below remain canonical Plotly 7.0.0 definitions.
     const CHART_THEMES = {
@@ -409,6 +411,7 @@
     let CHART_TITLE = DEFAULT_CHART_TITLE;
     let X_AXIS_TITLE = DEFAULT_X_AXIS_TITLE;
     let CHART_THEME = DEFAULT_CHART_THEME;
+    let showPiSprint = DEFAULT_SHOW_PI_SPRINT;
 
     let PROGRAM_INCREMENTS = [
       { name: "PI-1", start: "2025-01-06", end: "2025-03-28" },
@@ -464,7 +467,7 @@
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;");
 
-    const taskRowStart = 2.75;
+    const taskRowStart = () => showPiSprint ? 2.75 : 0;
 
     const normalizeStatus = status => {
       const key = String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -817,7 +820,7 @@
         String(exportDate.getDate()).padStart(2, "0")
       ].join("-");
       const laneRowPositions = new Map(
-        LANES.map(({ name }, index) => [name, taskRowStart + index])
+        LANES.map(({ name }, index) => [name, taskRowStart() + index])
       );
       const bandTrace = (items, row, color, name, width, textColor) => ({
         type: "bar",
@@ -850,7 +853,7 @@
         return { task, rowPosition, markerPosition: rowPosition + offset, position };
       });
       const rowLabelAnnotations = [
-          ...(isVizimapTheme ? [
+          ...(showPiSprint && isVizimapTheme ? [
             { text: "PROGRAM INCREMENTS", y: 0, bgcolor: VIZIMAP_COLORS.navy },
             { text: "SPRINTS", y: 1, bgcolor: "#28445f" }
           ] : []),
@@ -858,7 +861,7 @@
             if (!isVizimapTheme && !color) return [];
             return [{
               text: escapeAnnotationText(name),
-              y: taskRowStart + index,
+              y: taskRowStart() + index,
               bgcolor: color || (index % 2 ? "#0877dc" : "#173f8a")
             }];
           })
@@ -962,7 +965,7 @@
           cliponaxis: false
         }] : [])
       ];
-      const alignmentGridlines = [
+      const alignmentGridlines = showPiSprint ? [
         ...boundaryShapes(SPRINTS, {
           color: isVizimapTheme ? "#d4e2ec" : "#cbd5e1",
           width: 1,
@@ -973,7 +976,7 @@
           width: isVizimapTheme ? 1.5 : 2,
           dash: "dash"
         })
-      ];
+      ] : [];
       const milestoneConnectors = positionedMilestones
         .filter(({ position }) => position !== "on")
         .map(({ task, rowPosition, markerPosition }) => ({
@@ -994,7 +997,7 @@
             ? VIZIMAP_COLORS.pi[index % VIZIMAP_COLORS.pi.length]
             : "#2563eb"
       );
-      const piChevronTrace = isVizimapTheme && PROGRAM_INCREMENTS.length > 1
+      const piChevronTrace = showPiSprint && isVizimapTheme && PROGRAM_INCREMENTS.length > 1
         ? [{
             type: "scatter",
             mode: "markers",
@@ -1015,7 +1018,7 @@
       chartReady = Plotly.react(
         chart,
         [
-          bandTrace(
+          ...(showPiSprint ? [bandTrace(
             PROGRAM_INCREMENTS,
             0,
             piColors,
@@ -1031,7 +1034,7 @@
             "Sprints",
             isVizimapTheme ? 0.5 : 0.45,
             isVizimapTheme ? VIZIMAP_COLORS.sprintText : undefined
-          ),
+          )] : []),
           ...taskTraces
         ],
         {
@@ -1047,7 +1050,7 @@
             weight: 800
           } : undefined
         },
-        height: Math.max(640, 370 + LANES.length * 70),
+        height: Math.max(showPiSprint ? 640 : 500, (showPiSprint ? 370 : 230) + LANES.length * 70),
         margin: isVizimapTheme || hasLaneColorOverrides ? { l: 200, r: 48, t: 92, b: 92, pad: 4 } : undefined,
         barmode: "overlay",
         showlegend: false,
@@ -1060,11 +1063,11 @@
         },
         yaxis: {
           tickmode: "array",
-          tickvals: [0, 1, ...laneRowPositions.values()],
+          tickvals: [...(showPiSprint ? [0, 1] : []), ...laneRowPositions.values()],
           ticktext: isVizimapTheme
-            ? ["", "", ...LANES.map(() => "")]
-            : ["Program Increments", "Sprints", ...LANES.map(({ name, color }) => color ? "" : name)],
-          range: [taskRowStart + LANES.length - 0.4, -0.6],
+            ? [...(showPiSprint ? ["", ""] : []), ...LANES.map(() => "")]
+            : [...(showPiSprint ? ["Program Increments", "Sprints"] : []), ...LANES.map(({ name, color }) => color ? "" : name)],
+          range: [taskRowStart() + LANES.length - 0.4, -0.6],
           automargin: true
         }
         },
@@ -1083,6 +1086,8 @@
     renderChart().then(() => chart.on("plotly_click", handleChartClick));
 
     const tickMode = document.getElementById("tick-mode");
+    const sprintTickOption = document.getElementById("tick-mode-sprint");
+    const piTickOption = document.getElementById("tick-mode-pi");
     tickMode.addEventListener("change", () => {
       const tickItems = tickMode.value === "sprint"
         ? SPRINTS
@@ -1125,11 +1130,28 @@
     const chartTitle = document.getElementById("chart-title");
     const xAxisTitle = document.getElementById("x-axis-title");
     const chartTheme = document.getElementById("chart-theme");
+    const showPiSprintInput = document.getElementById("show-pi-sprint");
+    const piManager = document.getElementById("pi-manager");
+    const sprintManager = document.getElementById("sprint-manager");
+
+    const renderPiSprintVisibility = () => {
+      piManager.hidden = !showPiSprint;
+      sprintManager.hidden = !showPiSprint;
+      if (showPiSprint) {
+        tickMode.append(sprintTickOption, piTickOption);
+      } else {
+        tickMode.value = "calendar";
+        sprintTickOption.remove();
+        piTickOption.remove();
+      }
+    };
 
     const renderChartSettings = () => {
       chartTitle.value = CHART_TITLE;
       xAxisTitle.value = X_AXIS_TITLE;
       chartTheme.value = CHART_THEME;
+      showPiSprintInput.checked = showPiSprint;
+      renderPiSprintVisibility();
     };
 
     chartSettingsForm.addEventListener("submit", async event => {
@@ -1137,6 +1159,8 @@
       CHART_TITLE = chartTitle.value;
       X_AXIS_TITLE = xAxisTitle.value;
       CHART_THEME = chartTheme.value;
+      showPiSprint = showPiSprintInput.checked;
+      renderPiSprintVisibility();
       await refreshRoadmap();
     });
 
@@ -1864,6 +1888,9 @@
         CHART_THEME = typeof roadmap.chartTheme === "string" && roadmap.chartTheme in CHART_THEMES
           ? roadmap.chartTheme
           : DEFAULT_CHART_THEME;
+        showPiSprint = typeof roadmap.showPiSprint === "boolean"
+          ? roadmap.showPiSprint
+          : DEFAULT_SHOW_PI_SPRINT;
         roadmapFileHandle = fileHandle;
         closePiEditor();
         closeSprintEditor();
@@ -1902,7 +1929,8 @@
           tasks: TASKS,
           chartTitle: CHART_TITLE,
           xAxisTitle: X_AXIS_TITLE,
-          chartTheme: CHART_THEME
+          chartTheme: CHART_THEME,
+          showPiSprint
         }, null, 2) + "\n");
         await writable.close();
         roadmapFileHandle = fileHandle;
