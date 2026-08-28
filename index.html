@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.2";
+    const APP_VERSION = "1.0.3";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -477,6 +477,8 @@
       .replaceAll("&", "&amp;")
       .replaceAll("<", "&lt;")
       .replaceAll(">", "&gt;");
+    const milestoneLabel = task =>
+      `${escapeAnnotationText(task.name)}<br>${escapeAnnotationText(task.start)}`;
 
     const taskRowStart = () => showPiSprint ? 2.75 : 0;
 
@@ -907,7 +909,7 @@
           y: rowPosition + milestoneOffset,
           xref: "x",
           yref: "y",
-          text: escapeAnnotationText(task.name),
+          text: isMilestone ? milestoneLabel(task) : escapeAnnotationText(task.name),
           showarrow: false,
           xanchor: "center",
           yanchor: descriptionPosition === "above" ? "bottom" : "top",
@@ -953,7 +955,7 @@
           y: positionedMilestones.map(({ markerPosition }) => markerPosition),
           text: positionedMilestones.map(({ task }) =>
             descriptionPositionForTask(task) === "inline"
-              ? `${escapeAnnotationText(task.name)}<br>${task.start}`
+              ? milestoneLabel(task)
               : ""
           ),
           textposition: positionedMilestones.map(({ position }) =>
