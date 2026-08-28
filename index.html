@@ -219,6 +219,7 @@
       <section class="roadmap-manager" aria-labelledby="pi-manager-title">
       <h2 id="pi-manager-title">Program Increments</h2>
       <button id="add-pi" type="button">Add PI</button>
+      <button id="export-pis" type="button">Export CSV</button>
       <div id="pi-delete-warning" class="delete-warning" role="alert" hidden></div>
       <form id="pi-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
@@ -239,6 +240,7 @@
       <section class="roadmap-manager" aria-labelledby="sprint-manager-title">
       <h2 id="sprint-manager-title">Sprints</h2>
       <button id="add-sprint" type="button">Add Sprint</button>
+      <button id="export-sprints" type="button">Export CSV</button>
       <form id="sprint-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
           <label>Name <input id="sprint-name" name="name" type="text" required></label>
@@ -259,6 +261,7 @@
       <section class="roadmap-manager" aria-labelledby="lane-manager-title">
       <h2 id="lane-manager-title">Lanes</h2>
       <button id="add-lane" type="button">Add Lane</button>
+      <button id="export-lanes" type="button">Export CSV</button>
       <div id="lane-delete-warning" class="delete-warning" role="alert" hidden></div>
       <form id="lane-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
@@ -277,6 +280,7 @@
       <section class="roadmap-manager" aria-labelledby="task-manager-title">
       <h2 id="task-manager-title">Tasks</h2>
       <button id="add-task" type="button">Add Task</button>
+      <button id="export-tasks" type="button">Export CSV</button>
       <form id="task-editor" class="manager-editor" hidden novalidate>
         <div class="manager-fields">
           <label>Name <input id="task-name" name="name" type="text" required></label>
@@ -533,6 +537,44 @@
     window.addEventListener("resize", () => {
       if (!chartView.hidden && chartReady) chartReady.then(() => Plotly.Plots.resize(chart));
     });
+
+    const csvField = value => {
+      const text = value == null ? "" : String(value);
+      return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+    };
+
+    const exportCsv = (entity, fields, records) => {
+      const rows = [fields, ...records.map(record => fields.map(field => record[field]))];
+      const csv = rows.map(row => row.map(csvField).join(",")).join("\r\n");
+      const date = new Date();
+      const dateStamp = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0")
+      ].join("-");
+      const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+      const download = document.createElement("a");
+      download.href = url;
+      download.download = `vizimap-${entity}-${dateStamp}.csv`;
+      download.click();
+      URL.revokeObjectURL(url);
+    };
+
+    document.getElementById("export-pis").addEventListener("click", () =>
+      exportCsv("pis", ["name", "start", "end", "color"], PROGRAM_INCREMENTS)
+    );
+    document.getElementById("export-sprints").addEventListener("click", () =>
+      exportCsv("sprints", ["name", "start", "end", "piName"], SPRINTS)
+    );
+    document.getElementById("export-lanes").addEventListener("click", () =>
+      exportCsv("lanes", ["name", "color"], LANES)
+    );
+    document.getElementById("export-tasks").addEventListener("click", () =>
+      exportCsv("tasks", [
+        "name", "start", "end", "status", "owner", "lane", "description", "color",
+        "descriptionPosition", "milestonePosition", "milestoneShape"
+      ], TASKS)
+    );
 
     const renderChart = () => {
       const isVizimapTheme = CHART_THEME === "vizimap";
