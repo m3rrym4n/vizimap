@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.5";
+    const APP_VERSION = "1.0.6";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -1177,12 +1177,35 @@
 
       const task = trace.customdata[pointIndex][5];
       const taskIndex = TASKS.indexOf(task);
-      return taskIndex < 0 ? null : { traceIndex, pointIndex, taskIndex, xAxis };
+      return taskIndex < 0 ? null : { traceIndex, pointIndex, taskIndex, xAxis, type: "bar" };
+    };
+
+    const milestoneTaskHit = event => {
+      const xAxis = chart._fullLayout?.xaxis;
+      const yAxis = chart._fullLayout?.yaxis;
+      if (!xAxis || !yAxis) return null;
+
+      const traceIndex = chart.data.findIndex(trace => trace.meta === "task" && trace.type === "scatter");
+      if (traceIndex < 0) return null;
+
+      const trace = chart.data[traceIndex];
+      const pointer = chartPixelPosition(event);
+      const markerRadius = (Number(trace.marker?.size) || 14) / 2 + 2;
+      const pointIndex = trace.y.findIndex((row, index) => {
+        const markerX = xAxis._offset + xAxis.d2p(trace.x[index]);
+        const markerY = yAxis._offset + yAxis.d2p(row);
+        return Math.hypot(pointer.x - markerX, pointer.y - markerY) <= markerRadius;
+      });
+      if (pointIndex < 0) return null;
+
+      const task = trace.customdata[pointIndex][5];
+      const taskIndex = TASKS.indexOf(task);
+      return taskIndex < 0 ? null : { traceIndex, pointIndex, taskIndex, xAxis, type: "milestone" };
     };
 
     chart.addEventListener("mousedown", event => {
       if (event.button !== 0) return;
-      const hit = regularTaskHit(event);
+      const hit = regularTaskHit(event) || milestoneTaskHit(event);
       if (!hit) return;
 
       const task = TASKS[hit.taskIndex];
@@ -1192,8 +1215,9 @@
         pointerStartX: pointer.x,
         dateStart: Date.parse(task.start),
         dateEnd: Date.parse(task.end),
-        base: [...chart.data[hit.traceIndex].base],
-        durations: [...chart.data[hit.traceIndex].x],
+        traceDates: hit.type === "milestone" ? [...chart.data[hit.traceIndex].x] : null,
+        base: hit.type === "bar" ? [...chart.data[hit.traceIndex].base] : null,
+        durations: hit.type === "bar" ? [...chart.data[hit.traceIndex].x] : null,
         deltaDays: 0,
         moved: false
       };
@@ -1213,13 +1237,19 @@
         taskDrag.xAxis.p2d(taskDrag.pointerStartX - taskDrag.xAxis._offset)
       ).getTime();
       taskDrag.deltaDays = Math.round((cursorDate - startingDate) / 86400000);
-      taskDrag.base[taskDrag.pointIndex] = new Date(
+      const draggedDate = new Date(
         taskDrag.dateStart + taskDrag.deltaDays * 86400000
       ).toISOString().slice(0, 10);
-      Plotly.restyle(chart, {
-        base: [taskDrag.base],
-        x: [taskDrag.durations]
-      }, [taskDrag.traceIndex]);
+      if (taskDrag.type === "milestone") {
+        taskDrag.traceDates[taskDrag.pointIndex] = draggedDate;
+        Plotly.restyle(chart, { x: [taskDrag.traceDates] }, [taskDrag.traceIndex]);
+      } else {
+        taskDrag.base[taskDrag.pointIndex] = draggedDate;
+        Plotly.restyle(chart, {
+          base: [taskDrag.base],
+          x: [taskDrag.durations]
+        }, [taskDrag.traceIndex]);
+      }
     });
 
     chart.addEventListener("mouseup", async event => {
