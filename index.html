@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.6";
+    const APP_VERSION = "1.0.7";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -1151,6 +1151,33 @@
       return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     };
 
+    const snapToSprintBoundary = rawDate => {
+      if (!showPiSprint || !SPRINTS.length) return rawDate;
+
+      const sprintDurations = SPRINTS
+        .map(({ start, end }) => Math.abs(Date.parse(end) - Date.parse(start)))
+        .filter(duration => Number.isFinite(duration) && duration > 0);
+      if (!sprintDurations.length) return rawDate;
+
+      const boundaryDates = [...new Set(
+        SPRINTS.flatMap(({ start, end }) => [Date.parse(start), Date.parse(end)])
+          .filter(Number.isFinite)
+      )];
+      const rawTime = Date.parse(rawDate);
+      if (!boundaryDates.length || !Number.isFinite(rawTime)) return rawDate;
+
+      const averageSprintDuration = sprintDurations.reduce((sum, duration) => sum + duration, 0)
+        / sprintDurations.length;
+      const snapThreshold = averageSprintDuration / 4;
+      const nearestBoundary = boundaryDates.reduce((nearest, boundary) =>
+        Math.abs(boundary - rawTime) < Math.abs(nearest - rawTime) ? boundary : nearest
+      );
+
+      return Math.abs(nearestBoundary - rawTime) <= snapThreshold
+        ? new Date(nearestBoundary).toISOString().slice(0, 10)
+        : rawDate;
+    };
+
     const regularTaskHit = event => {
       const xAxis = chart._fullLayout?.xaxis;
       const yAxis = chart._fullLayout?.yaxis;
@@ -1261,10 +1288,12 @@
 
       event.preventDefault();
       const task = TASKS[completedDrag.taskIndex];
-      task.start = new Date(completedDrag.dateStart + completedDrag.deltaDays * 86400000)
+      const rawStart = new Date(completedDrag.dateStart + completedDrag.deltaDays * 86400000)
         .toISOString().slice(0, 10);
-      task.end = new Date(completedDrag.dateEnd + completedDrag.deltaDays * 86400000)
+      const rawEnd = new Date(completedDrag.dateEnd + completedDrag.deltaDays * 86400000)
         .toISOString().slice(0, 10);
+      task.start = snapToSprintBoundary(rawStart);
+      task.end = snapToSprintBoundary(rawEnd);
       await refreshRoadmap();
     });
 
