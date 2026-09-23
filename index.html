@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.9";
+    const APP_VERSION = "1.0.10";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -1151,7 +1151,7 @@
       return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     };
 
-    const snapToSprintBoundary = rawDate => {
+    const snapToSprintBoundary = (rawDate, boundaryType = "all") => {
       if (!showPiSprint || !SPRINTS.length) return rawDate;
 
       const sprintDurations = SPRINTS
@@ -1160,7 +1160,11 @@
       if (!sprintDurations.length) return rawDate;
 
       const boundaryDates = [...new Set(
-        SPRINTS.flatMap(({ start, end }) => [Date.parse(start), Date.parse(end)])
+        SPRINTS.flatMap(({ start, end }) => boundaryType === "start"
+          ? [Date.parse(start)]
+          : boundaryType === "end"
+            ? [Date.parse(end)]
+            : [Date.parse(start), Date.parse(end)])
           .filter(Number.isFinite)
       )];
       const rawTime = Date.parse(rawDate);
@@ -1301,10 +1305,14 @@
       const task = TASKS[completedDrag.taskIndex];
       const rawStart = new Date(completedDrag.dateStart + completedDrag.deltaDays * 86400000)
         .toISOString().slice(0, 10);
-      const rawEnd = new Date(completedDrag.dateEnd + completedDrag.deltaDays * 86400000)
-        .toISOString().slice(0, 10);
-      task.start = snapToSprintBoundary(rawStart);
-      task.end = snapToSprintBoundary(rawEnd);
+      if (completedDrag.type === "milestone") {
+        task.start = snapToSprintBoundary(rawStart);
+        task.end = task.start;
+      } else {
+        const duration = completedDrag.dateEnd - completedDrag.dateStart;
+        task.start = snapToSprintBoundary(rawStart, "start");
+        task.end = new Date(Date.parse(task.start) + duration).toISOString().slice(0, 10);
+      }
       await refreshRoadmap();
     });
 
