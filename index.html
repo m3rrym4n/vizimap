@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.7";
+    const APP_VERSION = "1.0.8";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -1234,6 +1234,7 @@
       if (event.button !== 0) return;
       const hit = regularTaskHit(event) || milestoneTaskHit(event);
       if (!hit) return;
+      event.stopPropagation();
 
       const task = TASKS[hit.taskIndex];
       const pointer = chartPixelPosition(event);
@@ -1248,7 +1249,7 @@
         deltaDays: 0,
         moved: false
       };
-    });
+    }, { capture: true });
 
     chart.addEventListener("mousemove", event => {
       if (!taskDrag) return;
