@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.8";
+    const APP_VERSION = "1.0.9";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -1230,6 +1230,16 @@
       return taskIndex < 0 ? null : { traceIndex, pointIndex, taskIndex, xAxis, type: "milestone" };
     };
 
+    const taskPointElement = ({ traceIndex, pointIndex, type }) => {
+      const traceType = type === "bar" ? "bar" : "scatter";
+      const traceLayer = type === "bar" ? ".barlayer" : ".scatterlayer";
+      const layerTraceIndex = chart.data
+        .slice(0, traceIndex)
+        .filter(trace => trace.type === traceType).length;
+      return chart.querySelectorAll(`.cartesianlayer ${traceLayer} .trace`)[layerTraceIndex]
+        ?.querySelectorAll(".point")[pointIndex] || null;
+    };
+
     chart.addEventListener("mousedown", event => {
       if (event.button !== 0) return;
       const hit = regularTaskHit(event) || milestoneTaskHit(event);
@@ -1238,14 +1248,14 @@
 
       const task = TASKS[hit.taskIndex];
       const pointer = chartPixelPosition(event);
+      const previewElement = taskPointElement(hit);
       taskDrag = {
         ...hit,
         pointerStartX: pointer.x,
         dateStart: Date.parse(task.start),
         dateEnd: Date.parse(task.end),
-        traceDates: hit.type === "milestone" ? [...chart.data[hit.traceIndex].x] : null,
-        base: hit.type === "bar" ? [...chart.data[hit.traceIndex].base] : null,
-        durations: hit.type === "bar" ? [...chart.data[hit.traceIndex].x] : null,
+        previewElement,
+        previewTransform: previewElement?.getAttribute("transform") || "",
         deltaDays: 0,
         moved: false
       };
@@ -1265,18 +1275,11 @@
         taskDrag.xAxis.p2d(taskDrag.pointerStartX - taskDrag.xAxis._offset)
       ).getTime();
       taskDrag.deltaDays = Math.round((cursorDate - startingDate) / 86400000);
-      const draggedDate = new Date(
-        taskDrag.dateStart + taskDrag.deltaDays * 86400000
-      ).toISOString().slice(0, 10);
-      if (taskDrag.type === "milestone") {
-        taskDrag.traceDates[taskDrag.pointIndex] = draggedDate;
-        Plotly.restyle(chart, { x: [taskDrag.traceDates] }, [taskDrag.traceIndex]);
-      } else {
-        taskDrag.base[taskDrag.pointIndex] = draggedDate;
-        Plotly.restyle(chart, {
-          base: [taskDrag.base],
-          x: [taskDrag.durations]
-        }, [taskDrag.traceIndex]);
+      if (taskDrag.previewElement) {
+        taskDrag.previewElement.setAttribute(
+          "transform",
+          `${taskDrag.previewTransform} translate(${pointer.x - taskDrag.pointerStartX} 0)`.trim()
+        );
       }
     });
 
@@ -1284,6 +1287,13 @@
       if (!taskDrag || event.button !== 0) return;
       const completedDrag = taskDrag;
       taskDrag = null;
+      if (completedDrag.previewElement) {
+        if (completedDrag.previewTransform) {
+          completedDrag.previewElement.setAttribute("transform", completedDrag.previewTransform);
+        } else {
+          completedDrag.previewElement.removeAttribute("transform");
+        }
+      }
       if (completedDrag.moved) setTimeout(() => { suppressNextTaskClick = false; }, 0);
       if (!completedDrag.moved || completedDrag.deltaDays === 0) return;
 
