@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.10";
+    const APP_VERSION = "1.0.11";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -455,6 +455,9 @@
     const MILESTONE_POSITIONS = ["on", "above", "below"];
     const MILESTONE_SHAPES = ["diamond", "circle", "star", "triangle", "octagon"];
     const MILESTONE_OFFSET = 0.38;
+    const TASK_EDGE_GRAB_PIXELS = 5;
+    const MINIMUM_TASK_DURATION_DAYS = 1;
+    const DAY_MILLISECONDS = 86400000;
     const DEFAULT_TASK_COLOR = "#2563eb";
     const VIZIMAP_COLORS = {
       navy: "#0b1e3b",
@@ -1194,21 +1197,34 @@
       const pointer = chartPixelPosition(event);
       const barHalfHeight = Math.abs(yAxis.d2p((trace.y[0] || 0) + (trace.width || 0.6) / 2)
         - yAxis.d2p(trace.y[0] || 0));
+      let hitStartPixel;
+      let hitEndPixel;
       const pointIndex = trace.y.findIndex((row, index) => {
         const rowPixel = yAxis._offset + yAxis.d2p(row);
         const startPixel = xAxis._offset + xAxis.d2p(trace.base[index]);
         const endPixel = xAxis._offset + xAxis.d2p(
           new Date(Date.parse(trace.base[index]) + trace.x[index]).toISOString()
         );
-        return Math.abs(pointer.y - rowPixel) <= barHalfHeight
+        const matches = Math.abs(pointer.y - rowPixel) <= barHalfHeight
           && pointer.x >= Math.min(startPixel, endPixel)
           && pointer.x <= Math.max(startPixel, endPixel);
+        if (matches) {
+          hitStartPixel = startPixel;
+          hitEndPixel = endPixel;
+        }
+        return matches;
       });
       if (pointIndex < 0) return null;
 
       const task = trace.customdata[pointIndex][5];
       const taskIndex = TASKS.indexOf(task);
-      return taskIndex < 0 ? null : { traceIndex, pointIndex, taskIndex, xAxis, type: "bar" };
+      if (taskIndex < 0) return null;
+      const startDistance = Math.abs(pointer.x - hitStartPixel);
+      const endDistance = Math.abs(pointer.x - hitEndPixel);
+      const dragMode = Math.min(startDistance, endDistance) <= TASK_EDGE_GRAB_PIXELS
+        ? startDistance <= endDistance ? "resize-left" : "resize-right"
+        : "move";
+      return { traceIndex, pointIndex, taskIndex, xAxis, type: "bar", dragMode };
     };
 
     const milestoneTaskHit = event => {
@@ -1244,6 +1260,41 @@
         ?.querySelectorAll(".point")[pointIndex] || null;
     };
 
+    const taskBarGeometry = pointElement => {
+      const shape = pointElement?.querySelector("rect, path");
+      if (!shape) return null;
+      const bounds = shape.getBBox();
+      return {
+        shape,
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        originalPath: shape.getAttribute("d")
+      };
+    };
+
+    const previewTaskBarResize = (geometry, left, right) => {
+      if (geometry.shape.tagName.toLowerCase() === "rect") {
+        geometry.shape.setAttribute("x", left);
+        geometry.shape.setAttribute("width", right - left);
+        return;
+      }
+      const top = geometry.y;
+      const bottom = geometry.y + geometry.height;
+      geometry.shape.setAttribute("d", `M${left},${top}V${bottom}H${right}V${top}Z`);
+    };
+
+    const restoreTaskBarGeometry = geometry => {
+      if (!geometry) return;
+      if (geometry.shape.tagName.toLowerCase() === "rect") {
+        geometry.shape.setAttribute("x", geometry.x);
+        geometry.shape.setAttribute("width", geometry.width);
+      } else {
+        geometry.shape.setAttribute("d", geometry.originalPath);
+      }
+    };
+
     chart.addEventListener("mousedown", event => {
       if (event.button !== 0) return;
       const hit = regularTaskHit(event) || milestoneTaskHit(event);
@@ -1253,12 +1304,16 @@
       const task = TASKS[hit.taskIndex];
       const pointer = chartPixelPosition(event);
       const previewElement = taskPointElement(hit);
+      const previewGeometry = hit.dragMode?.startsWith("resize")
+        ? taskBarGeometry(previewElement)
+        : null;
       taskDrag = {
         ...hit,
         pointerStartX: pointer.x,
         dateStart: Date.parse(task.start),
         dateEnd: Date.parse(task.end),
         previewElement,
+        previewGeometry,
         previewTransform: previewElement?.getAttribute("transform") || "",
         deltaDays: 0,
         moved: false
@@ -1266,7 +1321,11 @@
     }, { capture: true });
 
     chart.addEventListener("mousemove", event => {
-      if (!taskDrag) return;
+      if (!taskDrag) {
+        const hoverHit = regularTaskHit(event);
+        chart.style.cursor = hoverHit?.dragMode?.startsWith("resize") ? "ew-resize" : "";
+        return;
+      }
       const pointer = chartPixelPosition(event);
       if (!taskDrag.moved && Math.abs(pointer.x - taskDrag.pointerStartX) < 4) return;
 
@@ -1278,8 +1337,23 @@
       const startingDate = new Date(
         taskDrag.xAxis.p2d(taskDrag.pointerStartX - taskDrag.xAxis._offset)
       ).getTime();
-      taskDrag.deltaDays = Math.round((cursorDate - startingDate) / 86400000);
-      if (taskDrag.previewElement) {
+      taskDrag.deltaDays = Math.round((cursorDate - startingDate) / DAY_MILLISECONDS);
+      if (taskDrag.dragMode?.startsWith("resize") && taskDrag.previewGeometry) {
+        const { previewGeometry: geometry } = taskDrag;
+        const minimumWidth = Math.abs(
+          taskDrag.xAxis.d2p(new Date(taskDrag.dateStart + DAY_MILLISECONDS))
+          - taskDrag.xAxis.d2p(new Date(taskDrag.dateStart))
+        );
+        if (taskDrag.dragMode === "resize-left") {
+          const left = Math.min(geometry.x + pointer.x - taskDrag.pointerStartX,
+            geometry.x + geometry.width - minimumWidth);
+          previewTaskBarResize(geometry, left, geometry.x + geometry.width);
+        } else {
+          const right = Math.max(geometry.x + geometry.width + pointer.x - taskDrag.pointerStartX,
+            geometry.x + minimumWidth);
+          previewTaskBarResize(geometry, geometry.x, right);
+        }
+      } else if (taskDrag.previewElement) {
         taskDrag.previewElement.setAttribute(
           "transform",
           `${taskDrag.previewTransform} translate(${pointer.x - taskDrag.pointerStartX} 0)`.trim()
@@ -1291,7 +1365,8 @@
       if (!taskDrag || event.button !== 0) return;
       const completedDrag = taskDrag;
       taskDrag = null;
-      if (completedDrag.previewElement) {
+      restoreTaskBarGeometry(completedDrag.previewGeometry);
+      if (completedDrag.previewElement && !completedDrag.previewGeometry) {
         if (completedDrag.previewTransform) {
           completedDrag.previewElement.setAttribute("transform", completedDrag.previewTransform);
         } else {
@@ -1303,9 +1378,21 @@
 
       event.preventDefault();
       const task = TASKS[completedDrag.taskIndex];
-      const rawStart = new Date(completedDrag.dateStart + completedDrag.deltaDays * 86400000)
+      const rawStartTime = completedDrag.dateStart + completedDrag.deltaDays * DAY_MILLISECONDS;
+      const rawEndTime = completedDrag.dateEnd + completedDrag.deltaDays * DAY_MILLISECONDS;
+      const rawStart = new Date(rawStartTime)
         .toISOString().slice(0, 10);
-      if (completedDrag.type === "milestone") {
+      if (completedDrag.dragMode === "resize-left") {
+        const latestStart = completedDrag.dateEnd - MINIMUM_TASK_DURATION_DAYS * DAY_MILLISECONDS;
+        const clampedStart = new Date(Math.min(rawStartTime, latestStart)).toISOString().slice(0, 10);
+        const snappedStart = Date.parse(snapToSprintBoundary(clampedStart, "start"));
+        task.start = new Date(Math.min(snappedStart, latestStart)).toISOString().slice(0, 10);
+      } else if (completedDrag.dragMode === "resize-right") {
+        const earliestEnd = completedDrag.dateStart + MINIMUM_TASK_DURATION_DAYS * DAY_MILLISECONDS;
+        const clampedEnd = new Date(Math.max(rawEndTime, earliestEnd)).toISOString().slice(0, 10);
+        const snappedEnd = Date.parse(snapToSprintBoundary(clampedEnd, "end"));
+        task.end = new Date(Math.max(snappedEnd, earliestEnd)).toISOString().slice(0, 10);
+      } else if (completedDrag.type === "milestone") {
         task.start = snapToSprintBoundary(rawStart);
         task.end = task.start;
       } else {
