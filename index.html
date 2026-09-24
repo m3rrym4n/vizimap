@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.13";
+    const APP_VERSION = "1.0.14";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -496,6 +496,17 @@
       .map((trace, index) => trace.meta === "task" ? index : -1)
       .filter(index => index !== -1);
 
+    const taskHoverTemplate = (owner, isMilestone) =>
+      `%{customdata[0]}<br>${isMilestone ? "Date" : "Start"}: %{customdata[1]}` +
+      (isMilestone ? "" : "<br>End: %{customdata[2]}") +
+      "<br>Status: %{customdata[3]}" +
+      (owner ? "<br>Owner: %{customdata[4]}" : "") +
+      "<extra></extra>";
+
+    const taskHoverTemplatesForTrace = trace => trace.customdata.map(data =>
+      taskHoverTemplate(data[4], trace.type === "scatter")
+    );
+
     const taskTooltipToggleButton = {
       name: "toggleTaskTooltips",
       icon: Plotly.Icons.eye,
@@ -504,11 +515,14 @@
       },
       click: graphDiv => {
         taskTooltipsVisible = !taskTooltipsVisible;
-        Plotly.restyle(
-          graphDiv,
-          { hoverinfo: taskTooltipsVisible ? "all" : "skip" },
-          taskTraceIndices(graphDiv)
-        );
+        taskTraceIndices(graphDiv).forEach(index => {
+          const trace = graphDiv.data[index];
+          Plotly.restyle(graphDiv, {
+            hoverinfo: taskTooltipsVisible ? "all" : "skip",
+            // In Plotly.restyle(), null resets an attribute; undefined leaves it unchanged.
+            hovertemplate: taskTooltipsVisible ? [taskHoverTemplatesForTrace(trace)] : null
+          }, [index]);
+        });
         graphDiv.querySelector(
           `.modebar-btn[data-title="${taskTooltipsVisible ? "Show" : "Hide"} task tooltips"]`
         )?.setAttribute(
@@ -977,12 +991,9 @@
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
           hoverinfo: taskTooltipsVisible ? "all" : "skip",
-          hovertemplate: regularTasks.map(({ task: { owner } }) =>
-            "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
-            "<br>Status: %{customdata[3]}" +
-            (owner ? "<br>Owner: %{customdata[4]}" : "") +
-            "<extra></extra>"
-          ),
+          hovertemplate: taskTooltipsVisible
+            ? regularTasks.map(({ task: { owner } }) => taskHoverTemplate(owner, false))
+            : undefined,
           marker: {
             color: regularTasks.map(({ task }) => colorForTask(task)),
             cornerradius: isVizimapTheme ? "35%" : 0,
@@ -1008,12 +1019,9 @@
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
           hoverinfo: taskTooltipsVisible ? "all" : "skip",
-          hovertemplate: positionedMilestones.map(({ task: { owner } }) =>
-            "%{customdata[0]}<br>Date: %{customdata[1]}" +
-            "<br>Status: %{customdata[3]}" +
-            (owner ? "<br>Owner: %{customdata[4]}" : "") +
-            "<extra></extra>"
-          ),
+          hovertemplate: taskTooltipsVisible
+            ? positionedMilestones.map(({ task: { owner } }) => taskHoverTemplate(owner, true))
+            : undefined,
           marker: {
             color: positionedMilestones.map(({ task }) => colorForTask(task)),
             size: 14,
