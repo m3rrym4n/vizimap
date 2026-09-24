@@ -355,7 +355,7 @@
   </main>
 
   <script>
-    const APP_VERSION = "1.0.12";
+    const APP_VERSION = "1.0.13";
     const DEFAULT_CHART_TITLE = "Product Roadmap";
     const DEFAULT_X_AXIS_TITLE = "Date";
     const DEFAULT_CHART_THEME = "vizimap";
@@ -423,6 +423,13 @@
     let X_AXIS_TITLE = DEFAULT_X_AXIS_TITLE;
     let CHART_THEME = DEFAULT_CHART_THEME;
     let showPiSprint = DEFAULT_SHOW_PI_SPRINT;
+    let taskTooltipsVisible = true;
+
+    Plotly.Icons.eye = {
+      width: 1000,
+      height: 1000,
+      path: "M50 500Q250 150 500 150T950 500Q750 850 500 850T50 500ZM500 300A200 200 0 1 0 500 700A200 200 0 1 0 500 300ZM500 400A100 100 0 1 1 500 600A100 100 0 1 1 500 400Z"
+    };
 
     let PROGRAM_INCREMENTS = [
       { name: "PI-1", start: "2025-01-06", end: "2025-03-28" },
@@ -484,6 +491,32 @@
       `${escapeAnnotationText(task.name)}<br>${escapeAnnotationText(task.start)}`;
 
     const taskRowStart = () => showPiSprint ? 2.75 : 0;
+
+    const taskTraceIndices = graphDiv => graphDiv.data
+      .map((trace, index) => trace.meta === "task" ? index : -1)
+      .filter(index => index !== -1);
+
+    const taskTooltipToggleButton = {
+      name: "toggleTaskTooltips",
+      icon: Plotly.Icons.eye,
+      get title() {
+        return taskTooltipsVisible ? "Hide task tooltips" : "Show task tooltips";
+      },
+      click: graphDiv => {
+        taskTooltipsVisible = !taskTooltipsVisible;
+        Plotly.restyle(
+          graphDiv,
+          { hoverinfo: taskTooltipsVisible ? "all" : "skip" },
+          taskTraceIndices(graphDiv)
+        );
+        graphDiv.querySelector(
+          `.modebar-btn[data-title="${taskTooltipsVisible ? "Show" : "Hide"} task tooltips"]`
+        )?.setAttribute(
+          "data-title",
+          taskTooltipsVisible ? "Hide task tooltips" : "Show task tooltips"
+        );
+      }
+    };
 
     const normalizeStatus = status => {
       const key = String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
@@ -943,6 +976,7 @@
           customdata: regularTasks.map(({ task }) =>
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
+          hoverinfo: taskTooltipsVisible ? "all" : "skip",
           hovertemplate: regularTasks.map(({ task: { owner } }) =>
             "%{customdata[0]}<br>Start: %{customdata[1]}<br>End: %{customdata[2]}" +
             "<br>Status: %{customdata[3]}" +
@@ -973,6 +1007,7 @@
           customdata: positionedMilestones.map(({ task }) =>
             [task.name, task.start, task.end, task.status || "Unknown", task.owner, task]
           ),
+          hoverinfo: taskTooltipsVisible ? "all" : "skip",
           hovertemplate: positionedMilestones.map(({ task: { owner } }) =>
             "%{customdata[0]}<br>Date: %{customdata[1]}" +
             "<br>Status: %{customdata[3]}" +
@@ -1097,6 +1132,7 @@
         },
         {
           responsive: true,
+          modeBarButtonsToAdd: [taskTooltipToggleButton],
           toImageButtonOptions: {
             format: "png",
             filename: `roadmap-${exportDateStamp}`,
